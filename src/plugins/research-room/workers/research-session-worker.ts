@@ -1,19 +1,21 @@
 import type { IAgentRuntime, Task, TaskWorker } from "@elizaos/core";
 import { logger } from "@elizaos/core";
 import { type ResearchPlanData } from "../lib/plan";
+import { getLatestResearchRun, saveResearchRunRecord } from "../lib/research-run-store";
 import { executeResearchSession } from "../lib/research-executor";
 import {
-  saveResearchRunRecord,
   type ResearchRunPhase,
   type ResearchRunStatus,
 } from "../lib/research-run-store";
 import { saveResearchState } from "../lib/research-state-store";
+import { isFallbackOnlyResearchSessionData } from "../lib/session";
 import { RESEARCH_SESSION_TASK_NAME } from "../lib/research-task";
 
 const TASK_STATUS_PENDING = 1;
 const TASK_STATUS_IN_PROGRESS = 2;
 const TASK_STATUS_COMPLETED = 3;
 const TASK_STATUS_FAILED = 4;
+const EXECUTION_GUARD_WINDOW_MS = 30 * 60 * 1000;
 
 type ResearchTaskMetadata = {
   question?: string;
@@ -24,6 +26,22 @@ type ResearchTaskMetadata = {
   topicCount?: number;
   queuedAt?: number;
   updatedAt?: number;
+};
+
+const toTimestamp = (value: number | bigint | undefined): number | null => {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return Number(value);
+  }
+
+  return null;
+};
+
+const isFreshTimestamp = (value: number | null, now: number): boolean => {
+  return value !== null && now - value < EXECUTION_GUARD_WINDOW_MS;
 };
 
 const saveRunState = async (
@@ -156,6 +174,9 @@ export const researchSessionTaskWorker: TaskWorker = {
   name: RESEARCH_SESSION_TASK_NAME,
   execute: async (runtime: IAgentRuntime, options, task: Task) => {
     const metadata = options as ResearchTaskMetadata;
+    const roomId = task.roomId ?? runtime.agentId;
+    const worldId = task.worldId ?? runtime.agentId;
+    const taskId = task.id ?? null;
     const question =
       typeof metadata.question === "string" && metadata.question.trim().length > 0
         ? metadata.question.trim()
@@ -175,6 +196,75 @@ export const researchSessionTaskWorker: TaskWorker = {
       throw new Error("Research task is missing plan metadata");
     }
 
+    const now = Date.now();
+    const currentTask = taskId ? await runtime.getTask(taskId) : task;
+    const currentMetadata = currentTask?.metadata as ResearchTaskMetadata | undefined;
+    const currentTaskUpdatedAt = toTimestamp(currentTask?.updatedAt);
+    const latestRun = await getLatestResearchRun(runtime, roomId);
+
+    if (currentTask?.status === TASK_STATUS_COMPLETED || currentTask?.status === TASK_STATUS_FAILED) {
+      logger.warn(
+        {
+          taskId,
+          question,
+          taskStatus: currentTask.status,
+        },
+        "Skipping research task execution because the task is already terminal"
+      );
+      return undefined;
+    }
+
+    if (
+      taskId &&
+      latestRun?.taskId === taskId &&
+      (latestRun.status === "completed" || latestRun.status === "failed")
+    ) {
+      logger.warn(
+        {
+          taskId,
+          question,
+          runStatus: latestRun.status,
+        },
+        "Skipping duplicate research task execution because the latest run is already terminal"
+      );
+      return undefined;
+    }
+
+    if (
+      taskId &&
+      latestRun?.taskId === taskId &&
+      latestRun.status === "running" &&
+      isFreshTimestamp(latestRun.updatedAt, now)
+    ) {
+      logger.warn(
+        {
+          taskId,
+          question,
+          runStatus: latestRun.status,
+          runUpdatedAt: latestRun.updatedAt,
+        },
+        "Skipping duplicate research task execution because the same task is already running"
+      );
+      return undefined;
+    }
+
+    if (
+      typeof currentMetadata?.status === "string" &&
+      currentMetadata.status === "running" &&
+      isFreshTimestamp(currentTaskUpdatedAt, now)
+    ) {
+      logger.warn(
+        {
+          taskId,
+          question,
+          taskStatus: currentMetadata.status,
+          taskUpdatedAt: currentTaskUpdatedAt,
+        },
+        "Skipping duplicate research task execution because task metadata shows a fresh running execution"
+      );
+      return undefined;
+    }
+
     await saveRunState(runtime, task, plan, {
       question,
       status: "running",
@@ -183,12 +273,30 @@ export const researchSessionTaskWorker: TaskWorker = {
       evidenceCount: 0,
       topicCount: plan.topics.length,
     });
+    await saveResearchRunRecord(
+      runtime,
+      {
+        roomId,
+        worldId,
+      },
+      {
+        taskId,
+        question,
+        status: "running",
+        phase: "searching",
+        text: "Research task started.",
+        topicCount: plan.topics.length,
+        evidenceCount: 0,
+        createdAt: now,
+        updatedAt: now,
+      }
+    );
 
     try {
       const session = await executeResearchSession({
         runtime,
-        roomId: task.roomId ?? runtime.agentId,
-        worldId: task.worldId ?? runtime.agentId,
+        roomId,
+        worldId,
         question,
         plan,
         onProgress: async (progress) => {
@@ -206,12 +314,15 @@ export const researchSessionTaskWorker: TaskWorker = {
           });
         },
       });
+      const degraded = isFallbackOnlyResearchSessionData(session.data);
 
       await saveRunState(runtime, task, plan, {
         question,
         status: "completed",
         phase: "done",
-        text: "Research task completed and the session was saved.",
+        text: degraded
+          ? "Research task completed with fallback-only output; no usable live evidence was captured."
+          : "Research task completed and the session was saved.",
         evidenceCount: session.data.evidence.length,
         topicCount: session.data.topicResults.length,
       });

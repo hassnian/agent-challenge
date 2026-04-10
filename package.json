@@ -27,7 +27,7 @@
     "@elizaos/plugin-anthropic": "2.0.0-alpha.12",
     "@elizaos/plugin-bootstrap": "1.7.3-alpha.4",
     "@elizaos/plugin-openai": "2.0.0-alpha.16",
-    "@elizaos/plugin-openrouter": "2.0.0-alpha.13",
+    "@elizaos/plugin-openrouter": "^1.5.17",
     "@elizaos/plugin-sql": "1.7.3-alpha.4",
     "@elizaos/server": "1.7.3-alpha.4",
     "zod": "4.3.6"

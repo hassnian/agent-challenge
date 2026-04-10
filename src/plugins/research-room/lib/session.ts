@@ -1,5 +1,11 @@
 import type { ResearchPlanData } from "./plan";
-import type { DebateReview, TopicFinding, TopicResearchResult } from "./research";
+import {
+  DEFAULT_DEBATE_SUMMARY,
+  DEFAULT_TOPIC_RESEARCH_SUMMARY,
+  type DebateReview,
+  type TopicFinding,
+  type TopicResearchResult,
+} from "./research";
 
 export type ResearchRole = "searcher" | "skeptic" | "synthesizer";
 
@@ -57,14 +63,46 @@ export type ResearchSynthesis = {
   openQuestions: string[];
 };
 
+export const DEFAULT_SYNTHESIS_ANSWER =
+  "I could not generate a structured answer for this question.";
+
+export const DEFAULT_SYNTHESIS_SUMMARY =
+  "The assistant could not yet produce a structured synthesis.";
+
 export const createDefaultSynthesis = (): ResearchSynthesis => {
   return {
-    answer: "I could not generate a structured answer for this question.",
-    summary: "The assistant could not yet produce a structured synthesis.",
+    answer: DEFAULT_SYNTHESIS_ANSWER,
+    summary: DEFAULT_SYNTHESIS_SUMMARY,
     keyPoints: [],
     contestedPoints: [],
     openQuestions: [],
   };
+};
+
+export const isFallbackOnlyResearchSessionData = (
+  data: Pick<ResearchSessionData, "topicResults" | "debate" | "answer" | "summary" | "evidence">
+): boolean => {
+  const allTopicsFallback =
+    data.topicResults.length > 0 &&
+    data.topicResults.every(
+      (topic) =>
+        topic.summary === DEFAULT_TOPIC_RESEARCH_SUMMARY &&
+        topic.findings.length === 0 &&
+        topic.openQuestions.length === 0 &&
+        topic.followUpQueries.length === 0
+    );
+
+  const debateFallback =
+    data.debate.summary === DEFAULT_DEBATE_SUMMARY &&
+    data.debate.challenges.length === 0 &&
+    data.debate.missingEvidence.length === 0 &&
+    data.debate.followUpQueries.length === 0;
+
+  const synthesisFallback =
+    data.answer === DEFAULT_SYNTHESIS_ANSWER &&
+    data.summary === DEFAULT_SYNTHESIS_SUMMARY;
+
+  return data.evidence.length === 0 && allTopicsFallback && debateFallback && synthesisFallback;
 };
 
 const renderBulletList = (items: string[], emptyMessage: string): string[] => {

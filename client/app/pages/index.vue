@@ -30,18 +30,14 @@
                 :ui="{ root: 'w-full', base: 'w-full !bg-transparent text-lg' }"
                 @keydown.enter.prevent="startResearch"
               />
-              <div class="flex items-center justify-between px-4 pb-3 pt-1">
-                <p class="text-[11px] font-medium text-[var(--ui-text-muted)] tracking-wide selection:bg-transparent cursor-default">
-                  Planning → Evidence → Critique → Synthesis
-                </p>
+              <div class="flex items-center justify-end px-4 pb-3 pt-1">
                 <UButton
                   type="submit"
-                  label="Research"
-                  icon="i-lucide-arrow-right"
+                  icon="i-lucide-arrow-up"
                   trailing
                   size="sm"
                   :disabled="!question.trim()"
-                  class="font-medium px-4 shadow-sm"
+                  class="font-medium px-4 shadow-sm rounded-sm p-1.5!"
                 />
               </div>
             </div>

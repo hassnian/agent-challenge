@@ -1,5 +1,5 @@
 import { createError } from 'h3'
-import { approveChannelPlan, getUserResearchSession } from '../../../../utils/eliza'
+import { getUserResearchSession, retryResearchBootstrap } from '../../../../utils/eliza'
 import { getOrCreateResearchUserId } from '../../../../utils/research-user'
 
 export default defineEventHandler(async (event) => {
@@ -16,13 +16,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Research session not found.' })
   }
 
-  await approveChannelPlan(event, channelId, userId)
-
-  const refreshed = await getUserResearchSession(event, userId, channelId)
-
-  if (!refreshed.session) {
-    throw createError({ statusCode: 404, statusMessage: 'Research session not found after approval.' })
+  if (session.bootstrap.status !== 'failed') {
+    throw createError({ statusCode: 409, statusMessage: 'Research bootstrap is not in a failed state.' })
   }
 
-  return refreshed.session
+  return retryResearchBootstrap(event, userId, channelId)
 })

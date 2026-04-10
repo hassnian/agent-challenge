@@ -9,6 +9,7 @@ import { type ResearchTopic, type ResearchPlanData } from "./plan";
 import {
   createDefaultSynthesis,
   createResearchSession,
+  isFallbackOnlyResearchSessionData,
   type EvidenceCard,
   type ResearchSession,
   type ResearchSynthesis,
@@ -90,6 +91,20 @@ type SearchProviderConfig = {
   parseResults: (payload: unknown) => SearchResult[];
 };
 
+type ProviderDisableReason =
+  | {
+      kind: "auth";
+      logMessage: string;
+    }
+  | {
+      kind: "billing";
+      logMessage: string;
+    }
+  | {
+      kind: "rate_limit";
+      logMessage: string;
+    };
+
 const getApiKey = (runtime: IAgentRuntime, key: string): string | null => {
   const setting = runtime.getSetting(key);
   return typeof setting === "string" && setting.trim().length > 0
@@ -145,11 +160,35 @@ const getDomainFromUrl = (url: string): string => {
 
 const normalizeSnippet = (value: string | undefined): string => {
   const normalized = value?.replace(/\s+/g, " ").trim();
-  return normalized ? truncateText(normalized, 240) : "No snippet captured.";
+  return normalized ? truncateText(normalized, 3000) : "No snippet captured.";
 };
 
-const isQuotaOrRateLimitStatus = (status: number): boolean => {
-  return status === 401 || status === 402 || status === 403 || status === 429 || status === 432;
+const getProviderDisableReason = (
+  providerLabel: string,
+  status: number
+): ProviderDisableReason | null => {
+  if (status === 401 || status === 403) {
+    return {
+      kind: "auth",
+      logMessage: `${providerLabel} authentication or permission failure; disabling ${providerLabel} for the rest of this run`,
+    };
+  }
+
+  if (status === 402) {
+    return {
+      kind: "billing",
+      logMessage: `${providerLabel} billing or quota issue; disabling ${providerLabel} for the rest of this run`,
+    };
+  }
+
+  if (status === 429 || status === 432) {
+    return {
+      kind: "rate_limit",
+      logMessage: `${providerLabel} rate limit reached; disabling ${providerLabel} for the rest of this run`,
+    };
+  }
+
+  return null;
 };
 
 const createEvidenceCardFromSearchResult = (
@@ -211,16 +250,21 @@ const readUrlWithJina = async (
     });
 
     if (!response.ok) {
-      if (isQuotaOrRateLimitStatus(response.status)) {
+      const responseBody = normalizeSnippet(await response.text());
+      const disableReason = getProviderDisableReason("r.jina", response.status);
+
+      if (disableReason) {
         providerState.jinaEnabled = false;
         logger.warn(
-          { status: response.status },
-          "Reader quota or rate limit reached; disabling reader enrichment for the rest of this run"
+          { status: response.status, responseBody },
+          disableReason.logMessage
         );
         return null;
       }
 
-      throw new Error(`Jina reader failed with status ${response.status}`);
+      throw new Error(
+        `Jina reader failed with status ${response.status}${responseBody !== "No snippet captured." ? `: ${responseBody}` : ""}`
+      );
     }
 
     const text = normalizeSnippet(await response.text());
@@ -283,16 +327,26 @@ const searchTopicEvidenceWithProvider = async (
       const response = await provider.execute(query);
 
       if (!response.ok) {
-        if (isQuotaOrRateLimitStatus(response.status)) {
+        const responseBody = normalizeSnippet(await response.text());
+        const disableReason = getProviderDisableReason(provider.label, response.status);
+
+        if (disableReason) {
           providerState[provider.enabledKey] = false;
           logger.warn(
-            { status: response.status, topic: topic.title, query },
-            `${provider.label} quota or rate limit reached; disabling ${provider.label} for the rest of this run`
+            {
+              status: response.status,
+              topic: topic.title,
+              query,
+              responseBody,
+            },
+            disableReason.logMessage
           );
           break;
         }
 
-        throw new Error(`${provider.label} search failed with status ${response.status}`);
+        throw new Error(
+          `${provider.label} search failed with status ${response.status}${responseBody ? `: ${responseBody}` : ""}`
+        );
       }
 
       const payload = await response.json();
@@ -720,19 +774,30 @@ export const executeResearchSession = async (
     session.markdown
   );
 
-  logger.info(
-    {
-      question: questionFromPlan,
-      topicCount: topicResults.length,
-      evidenceCount: session.data.evidence.length,
-    },
-    "Completed multi-topic research session"
-  );
+  const degraded = isFallbackOnlyResearchSessionData(session.data);
+
+  const completionLogContext = {
+    question: questionFromPlan,
+    topicCount: topicResults.length,
+    evidenceCount: session.data.evidence.length,
+    degraded,
+  };
+
+  if (degraded) {
+    logger.warn(
+      completionLogContext,
+      "Completed degraded multi-topic research session with fallback-only output"
+    );
+  } else {
+    logger.info(completionLogContext, "Completed multi-topic research session");
+  }
 
   await emitProgress(params, {
     phase: "done",
     role: "synthesizer",
-    text: "Research session completed.",
+    text: degraded
+      ? "Research session completed with fallback-only output and no live evidence."
+      : "Research session completed.",
     evidenceCount: session.data.evidence.length,
     topicCount: session.data.topicResults.length,
   });

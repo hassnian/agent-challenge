@@ -50,6 +50,11 @@ export interface ResearchSession {
   id: string
   question: string
   phase: ResearchPhase
+  bootstrap: {
+    status: 'ready' | 'failed'
+    errorMessage: string | null
+    canRetry: boolean
+  }
   plan: ResearchPlan | null
   evidence: EvidenceCard[]
   critiques: CritiqueNote[]
@@ -61,7 +66,6 @@ export interface ResearchSession {
   createdAt: string
   completedAt: string | null
   progressLog: ProgressEntry[]
-  sessionId: string | null
 }
 
 const POLL_INTERVAL_MS = 4000
@@ -153,6 +157,16 @@ export const useResearch = () => {
     return session
   }
 
+  const retryBootstrap = async (channelId: string) => {
+    const session = await $fetch<ResearchSession>(`/api/research/channels/${channelId}/retry-bootstrap`, {
+      method: 'POST',
+    })
+
+    upsertSession(sessions, session)
+    activeSessionId.value = session.id
+    return session
+  }
+
   const deleteSession = (channelId: string) => {
     sessions.value = sessions.value.filter(session => session.id !== channelId)
     if (activeSessionId.value === channelId) {
@@ -178,6 +192,7 @@ export const useResearch = () => {
     loading,
     createSession,
     approvePlan,
+    retryBootstrap,
     refreshSessions,
     loadSession,
     deleteSession,

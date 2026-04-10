@@ -1,26 +1,18 @@
 import { createError, type H3Event } from 'h3'
-
-type AgentRecord = {
-  id: string
-  name?: string
-  status?: string
-}
-
-type ChannelRecord = {
-  id: string
-  name?: string
-  createdAt?: string | number
-  metadata?: Record<string, unknown>
-}
-
-type ActiveSessionRecord = {
-  sessionId: string
-  channelId: string
-  agentId: string
-  userId: string
-  createdAt?: string | number
-  metadata?: Record<string, unknown>
-}
+import {
+  createMessagingSession,
+  getActiveAgentId,
+  getChannelDetails,
+  getCurrentMessageServerId,
+  getRoomMemories,
+  listMessageServerChannels,
+  sendChannelMessage,
+  sendSessionMessage,
+  toElizaErrorMessage,
+  updateChannelMetadata,
+  type ChannelRecord,
+  type MemoryResponse,
+} from './eliza-api'
 
 type ResearchPlanRecord = {
   question: string
@@ -112,6 +104,11 @@ export type UiResearchSession = {
   id: string
   question: string
   phase: UiResearchPhase
+  bootstrap: {
+    status: 'ready' | 'failed'
+    errorMessage: string | null
+    canRetry: boolean
+  }
   plan: {
     question: string
     topics: Array<{
@@ -157,35 +154,29 @@ export type UiResearchSession = {
     role: 'planner' | 'searcher' | 'skeptic' | 'synthesizer'
     message: string
   }>
-  sessionId: string | null
 }
 
-type MemoryResponse<T> = {
-  success: boolean
-  data?: {
-    memories?: Array<{
-      id?: string
-      createdAt?: number
-      content?: {
-        metadata?: T
-      }
-    }>
-  }
+type ResearchBootstrapMetadata = {
+  status?: 'ready' | 'failed'
+  errorMessage?: string | null
+  failedAt?: string
+  lastAttemptedAt?: string
 }
 
-const DEFAULT_ELIZA_SERVER_URL = 'http://127.0.0.1:3000'
-
-const getBaseUrl = (event: H3Event) => {
-  const config = useRuntimeConfig(event)
-  const value = typeof config.elizaServerUrl === 'string' && config.elizaServerUrl.length > 0
-    ? config.elizaServerUrl
-    : DEFAULT_ELIZA_SERVER_URL
-
-  return value.replace(/\/$/, '')
+type ResearchChannelMetadata = {
+  agentId?: string
+  question?: string
+  researchBootstrap?: ResearchBootstrapMetadata
+  source?: string
+  userId?: string
 }
 
-const elizaFetch = <T>(event: H3Event, path: string, options?: Parameters<typeof $fetch<T>>[1]) => {
-  return $fetch<T>(`${getBaseUrl(event)}${path}`, options)
+const RESEARCH_CHANNEL_SOURCE = 'research-council-client'
+
+const DEFAULT_BOOTSTRAP_STATE: UiResearchSession['bootstrap'] = {
+  status: 'ready',
+  errorMessage: null,
+  canRetry: false,
 }
 
 const normalizeDate = (value: string | number | undefined, fallback: number) => {
@@ -274,10 +265,134 @@ const toProgressLog = (
     {
       id: 'planning',
       timestamp: createdAt,
-      role: 'planner' as const,
+      role: 'planner',
       message: 'Creating a research plan.',
     },
   ]
+}
+
+const getResearchChannelMetadata = (channel: ChannelRecord | null | undefined) => {
+  const metadata = channel?.metadata
+  return metadata && typeof metadata === 'object'
+    ? metadata as ResearchChannelMetadata
+    : {}
+}
+
+const getBootstrapState = (
+  channel: ChannelRecord | null | undefined
+): UiResearchSession['bootstrap'] => {
+  const bootstrap = getResearchChannelMetadata(channel).researchBootstrap
+
+  if (bootstrap?.status === 'failed') {
+    return {
+      status: 'failed',
+      errorMessage: bootstrap.errorMessage ?? 'Research failed to start on the Eliza server.',
+      canRetry: true,
+    }
+  }
+
+  return DEFAULT_BOOTSTRAP_STATE
+}
+
+const buildBootstrapMetadata = (
+  status: UiResearchSession['bootstrap']['status'],
+  errorMessage: string | null
+): ResearchBootstrapMetadata => ({
+  status,
+  errorMessage,
+  lastAttemptedAt: new Date().toISOString(),
+  ...(status === 'failed' ? { failedAt: new Date().toISOString() } : {}),
+})
+
+const getBootstrapPrompt = (question: string) => `Help me research: ${question}`
+
+const isResearchChannelForUser = (
+  channel: ChannelRecord,
+  userId: string,
+  agentId: string
+) => {
+  const metadata = getResearchChannelMetadata(channel)
+
+  return (
+    metadata.userId === userId &&
+    metadata.agentId === agentId &&
+    typeof metadata.question === 'string' &&
+    metadata.source === RESEARCH_CHANNEL_SOURCE
+  )
+}
+
+const buildPersistedResearchChannelMetadata = (
+  existingMetadata: Record<string, unknown> | undefined,
+  input: {
+    agentId: string
+    userId: string
+    question: string
+    bootstrap: ResearchBootstrapMetadata
+  }
+): Record<string, unknown> => ({
+  ...(existingMetadata ?? {}),
+  agentId: input.agentId,
+  userId: input.userId,
+  question: input.question,
+  source: RESEARCH_CHANNEL_SOURCE,
+  researchBootstrap: input.bootstrap,
+})
+
+const syncResearchChannelMetadata = async (
+  event: H3Event,
+  input: {
+    channelId: string
+    agentId: string
+    userId: string
+    question: string
+    bootstrap: ResearchBootstrapMetadata
+  }
+) => {
+  const channel = await getChannelDetails(event, input.channelId)
+
+  await updateChannelMetadata(
+    event,
+    input.channelId,
+    buildPersistedResearchChannelMetadata(channel?.metadata, input)
+  )
+}
+
+const buildBootstrapFailedUiSession = (
+  channelId: string,
+  question: string,
+  createdAtValue: string | number | undefined,
+  errorMessage: string
+): UiResearchSession => {
+  const createdAt = normalizeDate(createdAtValue, Date.now())
+
+  return {
+    id: channelId,
+    question,
+    phase: 'planning',
+    bootstrap: {
+      status: 'failed',
+      errorMessage,
+      canRetry: true,
+    },
+    plan: null,
+    evidence: [],
+    critiques: [],
+    contested: [],
+    openQuestions: [],
+    summary: '',
+    finalAnswer: '',
+    confidenceLevel: 0,
+    createdAt,
+    completedAt: null,
+    progressLog: [
+      {
+        id: 'bootstrap-failed',
+        timestamp: createdAt,
+        role: 'planner',
+        message: errorMessage,
+      },
+    ],
+  }
 }
 
 const getLatestMemoryMetadata = async <T>(
@@ -290,14 +405,13 @@ const getLatestMemoryMetadata = async <T>(
   let response: MemoryResponse<Record<string, T>>
 
   try {
-    response = await elizaFetch<MemoryResponse<Record<string, T>>>(
+    response = await getRoomMemories<Record<string, T>>(
       event,
-      `/api/memory/${agentId}/rooms/${channelId}/memories`,
+      agentId,
+      channelId,
       {
-        query: {
-          tableName,
-          limit: 1,
-        },
+        tableName,
+        limit: 1,
       }
     )
   } catch (error) {
@@ -309,11 +423,11 @@ const getLatestMemoryMetadata = async <T>(
     )
       ? error.statusCode
       : (
-          typeof error === 'object' &&
-          error !== null &&
-          'status' in error &&
-          typeof error.status === 'number'
-        )
+        typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        typeof error.status === 'number'
+      )
         ? error.status
         : null
 
@@ -349,14 +463,13 @@ const listIndexedResearchStates = async (
   let response: MemoryResponse<{ state?: ResearchStateRecord }>
 
   try {
-    response = await elizaFetch<MemoryResponse<{ state?: ResearchStateRecord }>>(
+    response = await getRoomMemories<{ state?: ResearchStateRecord }>(
       event,
-      `/api/memory/${agentId}/rooms/${userId}/memories`,
+      agentId,
+      userId,
       {
-        query: {
-          tableName: 'research_state_index',
-          limit: 100,
-        },
+        tableName: 'research_state_index',
+        limit: 100,
       }
     )
   } catch (error) {
@@ -368,11 +481,11 @@ const listIndexedResearchStates = async (
     )
       ? error.statusCode
       : (
-          typeof error === 'object' &&
-          error !== null &&
-          'status' in error &&
-          typeof error.status === 'number'
-        )
+        typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        typeof error.status === 'number'
+      )
         ? error.status
         : null
 
@@ -400,33 +513,8 @@ const listIndexedResearchStates = async (
   return [...latestByChannelId.values()]
 }
 
-const getChannelDetails = async (
-  event: H3Event,
-  channelId: string
-): Promise<ChannelRecord | null> => {
-  try {
-    const response = await elizaFetch<{ success: boolean; data?: ChannelRecord }>(
-      event,
-      `/api/messaging/channels/${channelId}/details`
-    )
-
-    return response.data ?? null
-  } catch {
-    return null
-  }
-}
-
-const getActiveSessions = async (event: H3Event, userId: string, agentId?: string) => {
-  const response = await elizaFetch<{ sessions?: ActiveSessionRecord[] }>(event, '/api/messaging/sessions')
-
-  return (response.sessions ?? []).filter((item) => (
-    item.userId === userId && (!agentId || item.agentId === agentId)
-  ))
-}
-
 const toUiSessionFromState = (
-  state: ResearchStateRecord,
-  activeSession: ActiveSessionRecord | null
+  state: ResearchStateRecord
 ): UiResearchSession => {
   const session = state.session
   const phase = state.phase
@@ -480,23 +568,24 @@ const toUiSessionFromState = (
 
   const progressLog = state.progressLog.length > 0
     ? state.progressLog.map((entry) => ({
-        id: entry.id,
-        timestamp: new Date(entry.timestamp).toISOString(),
-        role: entry.role,
-        message: entry.message,
-      }))
+      id: entry.id,
+      timestamp: new Date(entry.timestamp).toISOString(),
+      role: entry.role,
+      message: entry.message,
+    }))
     : toProgressLog(phase, createdAt, completedAt, session)
 
   return {
     id: state.channelId,
     question: session?.question ?? state.plan?.question ?? state.question,
     phase,
+    bootstrap: DEFAULT_BOOTSTRAP_STATE,
     plan: planTopics.length > 0
       ? {
-          question: session?.question ?? state.plan?.question ?? state.question,
-          topics: planTopics,
-          createdAt,
-        }
+        question: session?.question ?? state.plan?.question ?? state.question,
+        topics: planTopics,
+        createdAt,
+      }
       : null,
     evidence,
     critiques: [...critiquesFromChallenges, ...critiquesFromMissingEvidence],
@@ -508,23 +597,24 @@ const toUiSessionFromState = (
     createdAt,
     completedAt,
     progressLog,
-    sessionId: activeSession?.sessionId ?? null,
   }
 }
 
 const toPlanningUiSession = (
-  channel: ChannelRecord,
-  activeSession: ActiveSessionRecord | null
+  channel: ChannelRecord
 ): UiResearchSession => {
-  const createdAt = normalizeDate(channel.createdAt ?? activeSession?.createdAt, Date.now())
-  const question = typeof channel.metadata?.question === 'string'
-    ? channel.metadata.question
+  const createdAt = normalizeDate(channel.createdAt, Date.now())
+  const metadata = getResearchChannelMetadata(channel)
+  const bootstrap = getBootstrapState(channel)
+  const question = typeof metadata.question === 'string'
+    ? metadata.question
     : 'Untitled research session'
 
   return {
     id: channel.id,
     question,
     phase: 'planning',
+    bootstrap,
     plan: null,
     evidence: [],
     critiques: [],
@@ -535,22 +625,31 @@ const toPlanningUiSession = (
     confidenceLevel: 0,
     createdAt,
     completedAt: null,
-    progressLog: toProgressLog('planning', createdAt, null, null),
-    sessionId: activeSession?.sessionId ?? null,
+    progressLog: bootstrap.status === 'failed'
+      ? [
+        {
+          id: 'bootstrap-failed',
+          timestamp: createdAt,
+          role: 'planner',
+          message: bootstrap.errorMessage ?? 'Research failed to start on the Eliza server.',
+        },
+      ]
+      : toProgressLog('planning', createdAt, null, null),
   }
 }
 
 export const buildPendingUiSession = (
   channelId: string,
   question: string,
-  activeSession: ActiveSessionRecord | null
+  createdAtValue: string | number | undefined
 ): UiResearchSession => {
-  const createdAt = normalizeDate(activeSession?.createdAt, Date.now())
+  const createdAt = normalizeDate(createdAtValue, Date.now())
 
   return {
     id: channelId,
     question,
     phase: 'planning',
+    bootstrap: DEFAULT_BOOTSTRAP_STATE,
     plan: null,
     evidence: [],
     critiques: [],
@@ -562,111 +661,209 @@ export const buildPendingUiSession = (
     createdAt,
     completedAt: null,
     progressLog: toProgressLog('planning', createdAt, null, null),
-    sessionId: activeSession?.sessionId ?? null,
   }
 }
 
 export const getAgentId = async (event: H3Event) => {
-  const response = await elizaFetch<{ success: boolean; data?: { agents?: AgentRecord[] } }>(event, '/api/agents')
-  const agents = response.data?.agents ?? []
-  const agent = agents.find((item) => item.status === 'active') ?? agents.at(0)
-
-  if (!agent?.id) {
-    throw createError({ statusCode: 503, statusMessage: 'No Eliza agent is available.' })
-  }
-
-  return agent.id
+  return getActiveAgentId(event)
 }
 
-export const createChannelSession = async (
+export const createResearchSession = async (
   event: H3Event,
-  agentId: string,
   userId: string,
   question: string
 ) => {
-  const session = await elizaFetch<ActiveSessionRecord>(event, '/api/messaging/sessions', {
-    method: 'POST',
-    body: {
-      agentId,
-      userId,
+  const agentId = await getActiveAgentId(event)
+  const session = await createMessagingSession(event, {
+    agentId,
+    userId,
+    metadata: {
+      question,
+      source: RESEARCH_CHANNEL_SOURCE,
+    },
+  })
+
+  try {
+    await sendSessionMessage(event, session.sessionId, {
+      content: getBootstrapPrompt(question),
       metadata: {
-        question,
-        source: 'research-council-client',
+        source: RESEARCH_CHANNEL_SOURCE,
       },
-    },
-  })
-
-  const baseUrl = getBaseUrl(event)
-
-  void $fetch(`${baseUrl}/api/messaging/sessions/${session.sessionId}/messages`, {
-    method: 'POST',
-    body: {
-      content: `Help me research: ${question}`,
-      transport: 'http',
-    },
-  }).catch((error) => {
-    console.error('[research] failed to dispatch initial session message', {
-      sessionId: session.sessionId,
-      channelId: session.channelId,
-      userId,
-      error,
     })
-  })
 
-  return session
+    try {
+      await syncResearchChannelMetadata(event, {
+        channelId: session.channelId,
+        agentId,
+        userId,
+        question,
+        bootstrap: buildBootstrapMetadata('ready', null),
+      })
+    } catch (syncError) {
+      console.error('[research] failed to persist bootstrap ready state', {
+        channelId: session.channelId,
+        error: syncError,
+      })
+    }
+
+    return buildPendingUiSession(session.channelId, question, session.createdAt)
+  } catch (error) {
+    const errorMessage = toElizaErrorMessage(
+      error,
+      'Research failed to start on the Eliza server. Retry to send the first message again.'
+    )
+
+    try {
+      await syncResearchChannelMetadata(event, {
+        channelId: session.channelId,
+        agentId,
+        userId,
+        question,
+        bootstrap: buildBootstrapMetadata('failed', errorMessage),
+      })
+    } catch (syncError) {
+      console.error('[research] failed to persist bootstrap failure state', {
+        channelId: session.channelId,
+        error: syncError,
+      })
+    }
+
+    return buildBootstrapFailedUiSession(
+      session.channelId,
+      question,
+      session.createdAt,
+      errorMessage
+    )
+  }
 }
 
 export const approveChannelPlan = async (
   event: H3Event,
-  sessionId: string
+  channelId: string,
+  userId: string
 ) => {
-  await elizaFetch(event, `/api/messaging/sessions/${sessionId}/messages`, {
-    method: 'POST',
-    body: {
-      content: 'Approve this research plan.',
-      transport: 'http',
+  const channel = await getChannelDetails(event, channelId)
+  if (!channel) {
+    throw createError({ statusCode: 404, statusMessage: 'Research session not found.' })
+  }
+
+  const messageServerId = channel.messageServerId ?? await getCurrentMessageServerId(event)
+
+  await sendChannelMessage(event, {
+    channelId,
+    authorId: userId,
+    messageServerId,
+    content: 'Approve this research plan.',
+    metadata: {
+      source: RESEARCH_CHANNEL_SOURCE,
     },
   })
 }
 
+export const retryResearchBootstrap = async (
+  event: H3Event,
+  userId: string,
+  channelId: string
+) => {
+  const channel = await getChannelDetails(event, channelId)
+
+  if (!channel) {
+    throw createError({ statusCode: 404, statusMessage: 'Research session not found.' })
+  }
+
+  const metadata = getResearchChannelMetadata(channel)
+  const agentId = typeof metadata.agentId === 'string'
+    ? metadata.agentId
+    : await getActiveAgentId(event)
+  const question = typeof metadata.question === 'string' ? metadata.question : null
+
+  if (!question) {
+    throw createError({ statusCode: 409, statusMessage: 'Research question is missing for this session.' })
+  }
+
+  const messageServerId = channel.messageServerId ?? await getCurrentMessageServerId(event)
+
+  try {
+    await sendChannelMessage(event, {
+      channelId,
+      authorId: userId,
+      messageServerId,
+      content: getBootstrapPrompt(question),
+      metadata: {
+        source: RESEARCH_CHANNEL_SOURCE,
+      },
+    })
+
+    try {
+      await syncResearchChannelMetadata(event, {
+        channelId,
+        agentId,
+        userId,
+        question,
+        bootstrap: buildBootstrapMetadata('ready', null),
+      })
+    } catch (syncError) {
+      console.error('[research] failed to persist bootstrap ready state after retry', {
+        channelId,
+        error: syncError,
+      })
+    }
+
+    return buildPendingUiSession(channelId, question, channel.createdAt)
+  } catch (error) {
+    const errorMessage = toElizaErrorMessage(
+      error,
+      'Research failed to start on the Eliza server. Retry to send the first message again.'
+    )
+
+    try {
+      await syncResearchChannelMetadata(event, {
+        channelId,
+        agentId,
+        userId,
+        question,
+        bootstrap: buildBootstrapMetadata('failed', errorMessage),
+      })
+    } catch (syncError) {
+      console.error('[research] failed to persist bootstrap failure state after retry', {
+        channelId,
+        error: syncError,
+      })
+    }
+
+    return buildBootstrapFailedUiSession(
+      channelId,
+      question,
+      channel.createdAt,
+      errorMessage
+    )
+  }
+}
+
 export const listUserResearchSessions = async (event: H3Event, userId: string) => {
   const agentId = await getAgentId(event)
-  const [indexedStates, activeSessions] = await Promise.all([
+  const messageServerId = await getCurrentMessageServerId(event)
+  const [indexedStates, channels] = await Promise.all([
     listIndexedResearchStates(event, agentId, userId),
-    getActiveSessions(event, userId, agentId),
+    listMessageServerChannels(event, messageServerId),
   ])
-  const activeSessionsByChannelId = new Map(activeSessions.map((item) => [item.channelId, item]))
+
   const sessionsByChannelId = new Map(
     indexedStates
       .filter((state) => !state.userId || state.userId === userId)
       .map((state) => [
         state.channelId,
-        toUiSessionFromState(state, activeSessionsByChannelId.get(state.channelId) ?? null),
+        toUiSessionFromState(state),
       ])
   )
 
-  const missingActiveChannelIds = activeSessions
-    .map((session) => session.channelId)
-    .filter((channelId) => !sessionsByChannelId.has(channelId))
-
-  const directChannels = await Promise.all(
-    missingActiveChannelIds.map((channelId) => getChannelDetails(event, channelId))
-  )
-
-  for (const channel of directChannels) {
-    if (!channel?.id) {
+  for (const channel of channels) {
+    if (!channel?.id || sessionsByChannelId.has(channel.id)) {
       continue
     }
 
-    const activeSession = activeSessionsByChannelId.get(channel.id) ?? null
-    const metadataUserId = typeof channel.metadata?.userId === 'string' ? channel.metadata.userId : null
-    const metadataAgentId = typeof channel.metadata?.agentId === 'string' ? channel.metadata.agentId : null
-
-    if (
-      (metadataUserId === userId && metadataAgentId === agentId) ||
-      (!!activeSession && activeSession.userId === userId && activeSession.agentId === agentId)
-    ) {
-      sessionsByChannelId.set(channel.id, toPlanningUiSession(channel, activeSession))
+    if (isResearchChannelForUser(channel, userId, agentId)) {
+      sessionsByChannelId.set(channel.id, toPlanningUiSession(channel))
     }
   }
 
@@ -686,16 +883,12 @@ export const getUserResearchSession = async (
   channelId: string
 ) => {
   const agentId = await getAgentId(event)
-  const [state, activeSessions] = await Promise.all([
-    getLatestResearchState(event, agentId, channelId),
-    getActiveSessions(event, userId, agentId),
-  ])
-  const activeSession = activeSessions.find((item) => item.channelId === channelId) ?? null
+  const state = await getLatestResearchState(event, agentId, channelId)
 
   if (state && (!state.userId || state.userId === userId)) {
     return {
       agentId,
-      session: toUiSessionFromState(state, activeSession),
+      session: toUiSessionFromState(state),
     }
   }
 
@@ -708,14 +901,7 @@ export const getUserResearchSession = async (
     }
   }
 
-  const metadataUserId = typeof channel.metadata?.userId === 'string' ? channel.metadata.userId : null
-  const metadataAgentId = typeof channel.metadata?.agentId === 'string' ? channel.metadata.agentId : null
-  const belongsToUser = (
-    (metadataUserId === userId && metadataAgentId === agentId) ||
-    (!!activeSession && activeSession.userId === userId && activeSession.agentId === agentId)
-  )
-
-  if (!belongsToUser) {
+  if (!isResearchChannelForUser(channel, userId, agentId)) {
     return {
       agentId,
       session: null,
@@ -724,6 +910,6 @@ export const getUserResearchSession = async (
 
   return {
     agentId,
-    session: toPlanningUiSession(channel, activeSession),
+    session: toPlanningUiSession(channel),
   }
 }

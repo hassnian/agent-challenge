@@ -116,7 +116,7 @@
 const router = useRouter()
 const { sessions, activeSessionId } = useResearch()
 
-const isSidebarOpen = ref(true)
+const isSidebarOpen = ref(false)
 
 const colorMode = useColorMode()
 const isDark = computed({

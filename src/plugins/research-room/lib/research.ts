@@ -32,6 +32,12 @@ export type DebateReview = {
   followUpQueries: string[];
 };
 
+export const DEFAULT_TOPIC_RESEARCH_SUMMARY =
+  "I could not generate a research brief for this topic.";
+
+export const DEFAULT_DEBATE_SUMMARY =
+  "I could not generate a skeptical review for this question.";
+
 export const createDefaultTopicResearchResult = (
   topicId: string,
   title: string
@@ -39,7 +45,7 @@ export const createDefaultTopicResearchResult = (
   return {
     topicId,
     title,
-    summary: "I could not generate a research brief for this topic.",
+    summary: DEFAULT_TOPIC_RESEARCH_SUMMARY,
     findings: [],
     openQuestions: [],
     followUpQueries: [],
@@ -48,7 +54,7 @@ export const createDefaultTopicResearchResult = (
 
 export const createDefaultDebateReview = (): DebateReview => {
   return {
-    summary: "I could not generate a skeptical review for this question.",
+    summary: DEFAULT_DEBATE_SUMMARY,
     challenges: [],
     missingEvidence: [],
     followUpQueries: [],
