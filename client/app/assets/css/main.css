@@ -1,0 +1,126 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    /* Warm terracotta accent */
+    --color-terracotta-50: #fdf5f0;
+    --color-terracotta-100: #fbe8db;
+    --color-terracotta-200: #f6cdb6;
+    --color-terracotta-300: #f0ac87;
+    --color-terracotta-400: #e98456;
+    --color-terracotta-500: #e36833;
+    --color-terracotta-600: #d55129;
+    --color-terracotta-700: #b13e23;
+    --color-terracotta-800: #8e3422;
+    --color-terracotta-900: #732e1f;
+    --color-terracotta-950: #3e140e;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background-color: var(--ui-bg);
+    color: var(--ui-text);
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--ui-border);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ui-border-hover);
+}
+
+/* Animations */
+@keyframes pulse-dot {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.animate-pulse-dot {
+    animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes slide-up-fade {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-up {
+    animation: slide-up-fade 0.3s ease-out forwards;
+}
+
+.stagger-children>* {
+    animation: slide-up-fade 0.3s ease-out forwards;
+    opacity: 0;
+}
+
+.stagger-children>*:nth-child(1) {
+    animation-delay: 0.04s;
+}
+
+.stagger-children>*:nth-child(2) {
+    animation-delay: 0.08s;
+}
+
+.stagger-children>*:nth-child(3) {
+    animation-delay: 0.12s;
+}
+
+.stagger-children>*:nth-child(4) {
+    animation-delay: 0.16s;
+}
+
+.stagger-children>*:nth-child(5) {
+    animation-delay: 0.2s;
+}
+
+.stagger-children>*:nth-child(6) {
+    animation-delay: 0.24s;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(90deg, var(--ui-bg-accented) 25%, var(--ui-bg-elevated) 50%, var(--ui-bg-accented) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
