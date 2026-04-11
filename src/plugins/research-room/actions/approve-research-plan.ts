@@ -12,6 +12,7 @@ import {
   getLatestResearchPlan,
   saveResearchPlan,
 } from "../lib/plan-store";
+import { resolveResearchMessageContext } from "../lib/message-context";
 import {
   saveResearchState,
   type ResearchStatePhase,
@@ -61,26 +62,26 @@ export const approveResearchPlanAction: Action = {
       ...latestPlan,
       approved: true,
     };
+    const context = await resolveResearchMessageContext(runtime, message);
 
     await saveResearchPlan(runtime, message, approvedPlan);
     const queuedTask = await queueResearchSessionTask(runtime, {
-      roomId: message.roomId,
-      worldId: message.worldId,
+      roomId: context.roomId,
+      worldId: context.worldId,
       entityId: message.entityId,
       question: approvedPlan.question,
       plan: approvedPlan,
     });
-    const room = await runtime.getRoom(message.roomId);
     const statePhase: ResearchStatePhase = queuedTask.alreadyQueued
       ? "researching"
       : "researching";
     await saveResearchState(
       runtime,
       {
-        roomId: message.roomId,
-        worldId: message.worldId,
-        channelId: room?.channelId ?? message.roomId,
-        userId: message.entityId,
+        roomId: context.roomId,
+        worldId: context.worldId,
+        channelId: context.channelId,
+        userId: context.userId,
       },
       {
         question: approvedPlan.question,

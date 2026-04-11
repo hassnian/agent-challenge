@@ -1,5 +1,6 @@
 import type { IAgentRuntime, Memory } from "@elizaos/core";
 import { createResearchPlan, type ResearchPlanData } from "./plan";
+import { resolveResearchMessageContext } from "./message-context";
 
 const RESEARCH_PLANS_TABLE = "research_plans";
 
@@ -32,13 +33,14 @@ export const saveResearchPlan = async (
   plan: ResearchPlanData
 ): Promise<void> => {
   const rendered = createResearchPlan(plan);
+  const context = await resolveResearchMessageContext(runtime, message);
 
   await runtime.createMemory(
     {
       agentId: runtime.agentId,
       entityId: runtime.agentId,
-      roomId: message.roomId,
-      worldId: message.worldId,
+      roomId: context.roomId,
+      worldId: context.worldId,
       content: {
         text: rendered.markdown,
         metadata: {

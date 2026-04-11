@@ -1,6 +1,7 @@
 import { createError, type H3Event } from 'h3'
 import {
   createMessagingSession,
+  ensureUserWorld,
   getActiveAgentId,
   getChannelDetails,
   getCurrentMessageServerId,
@@ -13,6 +14,10 @@ import {
   type ChannelRecord,
   type MemoryResponse,
 } from './eliza-api'
+import {
+  hasResearchUserWorldForServer,
+  markResearchUserWorldReady,
+} from './research-user'
 
 type ResearchPlanRecord = {
   question: string
@@ -172,6 +177,16 @@ type ResearchChannelMetadata = {
 }
 
 const RESEARCH_CHANNEL_SOURCE = 'research-council-client'
+const SESSION_CACHE_TTL_MS = 1_500
+const SESSIONS_LIST_CACHE_TTL_MS = 2_000
+
+type CacheEntry<T> = {
+  expiresAt: number
+  promise: Promise<T> | null
+  value: T | null
+}
+
+const sessionResponseCache = new Map<string, CacheEntry<unknown>>()
 
 const DEFAULT_BOOTSTRAP_STATE: UiResearchSession['bootstrap'] = {
   status: 'ready',
@@ -305,6 +320,77 @@ const buildBootstrapMetadata = (
 })
 
 const getBootstrapPrompt = (question: string) => `Help me research: ${question}`
+
+const getCachedResponse = async <T>(
+  key: string,
+  ttlMs: number,
+  loader: () => Promise<T>,
+  options?: { fresh?: boolean }
+): Promise<T> => {
+  if (options?.fresh) {
+    sessionResponseCache.delete(key)
+  }
+
+  const now = Date.now()
+  const existing = sessionResponseCache.get(key) as CacheEntry<T> | undefined
+
+  if (existing) {
+    if (existing.promise) {
+      return existing.promise
+    }
+
+    if (existing.value !== null && existing.expiresAt > now) {
+      return existing.value
+    }
+  }
+
+  const promise = loader()
+    .then((value) => {
+      sessionResponseCache.set(key, {
+        expiresAt: Date.now() + ttlMs,
+        promise: null,
+        value,
+      })
+      return value
+    })
+    .catch((error) => {
+      sessionResponseCache.delete(key)
+      throw error
+    })
+
+  sessionResponseCache.set(key, {
+    expiresAt: now + ttlMs,
+    promise,
+    value: existing?.value ?? null,
+  })
+
+  return promise
+}
+
+const invalidateSessionCache = (userId: string, channelId?: string) => {
+  sessionResponseCache.delete(`sessions:${userId}`)
+
+  if (channelId) {
+    sessionResponseCache.delete(`session:${userId}:${channelId}`)
+  }
+}
+
+const runInBackground = (event: H3Event, task: Promise<void>) => {
+  const pendingTask = task.catch((error) => {
+    console.error('[research] background task failed', { error })
+  })
+
+  const backgroundEvent = event as H3Event & {
+    waitUntil?: (promise: Promise<void>) => void
+  }
+
+  if (typeof backgroundEvent.waitUntil === 'function') {
+    backgroundEvent.waitUntil(pendingTask)
+    return
+  }
+
+  void pendingTask
+}
 
 const isResearchChannelForUser = (
   channel: ChannelRecord,
@@ -513,6 +599,16 @@ const listIndexedResearchStates = async (
   return [...latestByChannelId.values()]
 }
 
+const getIndexedResearchStateForChannel = async (
+  event: H3Event,
+  agentId: string,
+  userId: string,
+  channelId: string
+) => {
+  const indexedStates = await listIndexedResearchStates(event, agentId, userId)
+  return indexedStates.find((state) => state.channelId === channelId) ?? null
+}
+
 const toUiSessionFromState = (
   state: ResearchStateRecord
 ): UiResearchSession => {
@@ -674,6 +770,16 @@ export const createResearchSession = async (
   question: string
 ) => {
   const agentId = await getActiveAgentId(event)
+  const messageServerId = await getCurrentMessageServerId(event)
+
+  // The bootstrap plugin's onboarding path looks for a user-owned world that is attached
+  // to the current message server. Cache the success per browser user to avoid leaking
+  // duplicate worlds on every research start.
+  if (!hasResearchUserWorldForServer(event, messageServerId)) {
+    await ensureUserWorld(event, agentId, userId, messageServerId)
+    markResearchUserWorldReady(event, messageServerId)
+  }
+
   const session = await createMessagingSession(event, {
     agentId,
     userId,
@@ -684,57 +790,54 @@ export const createResearchSession = async (
   })
 
   try {
-    await sendSessionMessage(event, session.sessionId, {
-      content: getBootstrapPrompt(question),
-      metadata: {
-        source: RESEARCH_CHANNEL_SOURCE,
-      },
-    })
-
-    try {
-      await syncResearchChannelMetadata(event, {
-        channelId: session.channelId,
-        agentId,
-        userId,
-        question,
-        bootstrap: buildBootstrapMetadata('ready', null),
-      })
-    } catch (syncError) {
-      console.error('[research] failed to persist bootstrap ready state', {
-        channelId: session.channelId,
-        error: syncError,
-      })
-    }
-
-    return buildPendingUiSession(session.channelId, question, session.createdAt)
-  } catch (error) {
-    const errorMessage = toElizaErrorMessage(
-      error,
-      'Research failed to start on the Eliza server. Retry to send the first message again.'
-    )
-
-    try {
-      await syncResearchChannelMetadata(event, {
-        channelId: session.channelId,
-        agentId,
-        userId,
-        question,
-        bootstrap: buildBootstrapMetadata('failed', errorMessage),
-      })
-    } catch (syncError) {
-      console.error('[research] failed to persist bootstrap failure state', {
-        channelId: session.channelId,
-        error: syncError,
-      })
-    }
-
-    return buildBootstrapFailedUiSession(
-      session.channelId,
+    await syncResearchChannelMetadata(event, {
+      channelId: session.channelId,
+      agentId,
+      userId,
       question,
-      session.createdAt,
-      errorMessage
-    )
+      bootstrap: buildBootstrapMetadata('ready', null),
+    })
+  } catch (syncError) {
+    console.error('[research] failed to persist bootstrap ready state', {
+      channelId: session.channelId,
+      error: syncError,
+    })
   }
+
+  runInBackground(event, (async () => {
+    try {
+      await sendSessionMessage(event, session.sessionId, {
+        content: getBootstrapPrompt(question),
+        metadata: {
+          source: RESEARCH_CHANNEL_SOURCE,
+        },
+      })
+    } catch (error) {
+      const errorMessage = toElizaErrorMessage(
+        error,
+        'Research failed to start on the Eliza server. Retry to send the first message again.'
+      )
+
+      try {
+        await syncResearchChannelMetadata(event, {
+          channelId: session.channelId,
+          agentId,
+          userId,
+          question,
+          bootstrap: buildBootstrapMetadata('failed', errorMessage),
+        })
+      } catch (syncError) {
+        console.error('[research] failed to persist bootstrap failure state', {
+          channelId: session.channelId,
+          error: syncError,
+        })
+      }
+    }
+  })())
+
+  invalidateSessionCache(userId, session.channelId)
+
+  return buildPendingUiSession(session.channelId, question, session.createdAt)
 }
 
 export const approveChannelPlan = async (
@@ -758,6 +861,8 @@ export const approveChannelPlan = async (
       source: RESEARCH_CHANNEL_SOURCE,
     },
   })
+
+  invalidateSessionCache(userId, channelId)
 }
 
 export const retryResearchBootstrap = async (
@@ -809,6 +914,7 @@ export const retryResearchBootstrap = async (
       })
     }
 
+    invalidateSessionCache(userId, channelId)
     return buildPendingUiSession(channelId, question, channel.createdAt)
   } catch (error) {
     const errorMessage = toElizaErrorMessage(
@@ -831,6 +937,7 @@ export const retryResearchBootstrap = async (
       })
     }
 
+    invalidateSessionCache(userId, channelId)
     return buildBootstrapFailedUiSession(
       channelId,
       question,
@@ -840,76 +947,99 @@ export const retryResearchBootstrap = async (
   }
 }
 
-export const listUserResearchSessions = async (event: H3Event, userId: string) => {
-  const agentId = await getAgentId(event)
-  const messageServerId = await getCurrentMessageServerId(event)
-  const [indexedStates, channels] = await Promise.all([
-    listIndexedResearchStates(event, agentId, userId),
-    listMessageServerChannels(event, messageServerId),
-  ])
+export const listUserResearchSessions = async (
+  event: H3Event,
+  userId: string,
+  options?: { fresh?: boolean }
+) => {
+  return getCachedResponse(`sessions:${userId}`, SESSIONS_LIST_CACHE_TTL_MS, async () => {
+    const agentId = await getAgentId(event)
+    const messageServerId = await getCurrentMessageServerId(event)
+    const [indexedStates, channels] = await Promise.all([
+      listIndexedResearchStates(event, agentId, userId),
+      listMessageServerChannels(event, messageServerId),
+    ])
 
-  const sessionsByChannelId = new Map(
-    indexedStates
-      .filter((state) => !state.userId || state.userId === userId)
-      .map((state) => [
-        state.channelId,
-        toUiSessionFromState(state),
-      ])
-  )
+    const sessionsByChannelId = new Map(
+      indexedStates
+        .filter((state) => !state.userId || state.userId === userId)
+        .map((state) => [
+          state.channelId,
+          toUiSessionFromState(state),
+        ])
+    )
 
-  for (const channel of channels) {
-    if (!channel?.id || sessionsByChannelId.has(channel.id)) {
-      continue
+    for (const channel of channels) {
+      if (!channel?.id || sessionsByChannelId.has(channel.id)) {
+        continue
+      }
+
+      if (isResearchChannelForUser(channel, userId, agentId)) {
+        sessionsByChannelId.set(channel.id, toPlanningUiSession(channel))
+      }
     }
 
-    if (isResearchChannelForUser(channel, userId, agentId)) {
-      sessionsByChannelId.set(channel.id, toPlanningUiSession(channel))
+    const sessions = [...sessionsByChannelId.values()]
+
+    sessions.sort((a, b) => new Date(b.completedAt ?? b.createdAt).getTime() - new Date(a.completedAt ?? a.createdAt).getTime())
+
+    return {
+      agentId,
+      sessions,
     }
-  }
-
-  const sessions = [...sessionsByChannelId.values()]
-
-  sessions.sort((a, b) => new Date(b.completedAt ?? b.createdAt).getTime() - new Date(a.completedAt ?? a.createdAt).getTime())
-
-  return {
-    agentId,
-    sessions,
-  }
+  }, options)
 }
 
 export const getUserResearchSession = async (
   event: H3Event,
   userId: string,
-  channelId: string
+  channelId: string,
+  options?: { fresh?: boolean }
 ) => {
-  const agentId = await getAgentId(event)
-  const state = await getLatestResearchState(event, agentId, channelId)
+  return getCachedResponse(`session:${userId}:${channelId}`, SESSION_CACHE_TTL_MS, async () => {
+    const agentId = await getAgentId(event)
+    const indexedState = await getIndexedResearchStateForChannel(
+      event,
+      agentId,
+      userId,
+      channelId
+    )
 
-  if (state && (!state.userId || state.userId === userId)) {
+    if (indexedState) {
+      return {
+        agentId,
+        session: toUiSessionFromState(indexedState),
+      }
+    }
+
+    const state = await getLatestResearchState(event, agentId, channelId)
+
+    if (state && (!state.userId || state.userId === userId)) {
+      return {
+        agentId,
+        session: toUiSessionFromState(state),
+      }
+    }
+
+    const channel = await getChannelDetails(event, channelId)
+
+    if (!channel) {
+      return {
+        agentId,
+        session: null,
+      }
+    }
+
+    if (!isResearchChannelForUser(channel, userId, agentId)) {
+      return {
+        agentId,
+        session: null,
+      }
+    }
+
     return {
       agentId,
-      session: toUiSessionFromState(state),
+      session: toPlanningUiSession(channel),
     }
-  }
-
-  const channel = await getChannelDetails(event, channelId)
-
-  if (!channel) {
-    return {
-      agentId,
-      session: null,
-    }
-  }
-
-  if (!isResearchChannelForUser(channel, userId, agentId)) {
-    return {
-      agentId,
-      session: null,
-    }
-  }
-
-  return {
-    agentId,
-    session: toPlanningUiSession(channel),
-  }
+  }, options)
 }

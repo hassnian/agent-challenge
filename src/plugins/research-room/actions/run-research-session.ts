@@ -9,6 +9,7 @@ import {
   type State,
 } from "@elizaos/core";
 import { extractResearchQuestion } from "../lib/question";
+import { resolveResearchMessageContext } from "../lib/message-context";
 import { getLatestResearchPlan } from "../lib/plan-store";
 import { queueResearchSessionTask } from "../lib/research-task";
 
@@ -81,9 +82,10 @@ export const runResearchSessionAction: Action = {
     }
 
     const questionFromPlan = plan.question || question;
+    const context = await resolveResearchMessageContext(runtime, message);
     const queuedTask = await queueResearchSessionTask(runtime, {
-      roomId: message.roomId,
-      worldId: message.worldId,
+      roomId: context.roomId,
+      worldId: context.worldId,
       entityId: message.entityId,
       question: questionFromPlan,
       plan,

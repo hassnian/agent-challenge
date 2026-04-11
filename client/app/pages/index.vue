@@ -1,6 +1,5 @@
 <template>
-  <NuxtLayout>
-    <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col">
       <!-- Hero Input -->
       <div class="flex-1 flex flex-col items-center justify-center px-6 relative overflow-hidden">
         <!-- Decoration -->
@@ -102,7 +101,6 @@
         </div>
       </div>
     </div>
-  </NuxtLayout>
 </template>
 
 <script setup lang="ts">

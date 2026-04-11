@@ -37,12 +37,12 @@
               v-for="session in activeSessions"
               :key="session.id"
               class="w-full text-left px-2.5 py-2 rounded-md text-[13px] hover:bg-[var(--ui-bg-accented)] transition-colors mb-0.5"
-              :class="{ 'bg-[var(--ui-bg-accented)] shadow-sm ring-1 ring-[var(--ui-border)]': activeSessionId === session.id }"
+              :class="{ 'bg-[var(--ui-bg-accented)] shadow-sm ring-1 ring-[var(--ui-border)]': selectedSessionId === session.id }"
               @click="navigateToSession(session.id)"
             >
               <div class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 rounded-full shrink-0 ring-2 ring-current/20 shadow-[0_0_6px_current]" :class="phaseColor(session.phase)" />
-                <span class="truncate font-medium transition-colors" :class="activeSessionId === session.id ? 'text-[var(--ui-text-highlighted)]' : 'text-[var(--ui-text)]'">{{ session.question.slice(0, 36) }}{{ session.question.length > 36 ? '…' : '' }}</span>
+                <span class="truncate font-medium transition-colors" :class="selectedSessionId === session.id ? 'text-[var(--ui-text-highlighted)]' : 'text-[var(--ui-text)]'">{{ session.question.slice(0, 36) }}{{ session.question.length > 36 ? '…' : '' }}</span>
               </div>
               <p class="text-[11px] text-[var(--ui-text-muted)] mt-1 ml-3.5">{{ formatPhase(session.phase) }}</p>
             </button>
@@ -59,12 +59,17 @@
               v-for="session in completedSessions"
               :key="session.id"
               class="w-full text-left px-2.5 py-2 rounded-md text-[13px] hover:bg-[var(--ui-bg-accented)] transition-colors mb-0.5"
-              :class="{ 'bg-[var(--ui-bg-accented)] shadow-sm ring-1 ring-[var(--ui-border)]': activeSessionId === session.id }"
+              :class="{ 'bg-[var(--ui-bg-accented)] shadow-sm ring-1 ring-[var(--ui-border)]': selectedSessionId === session.id }"
               @click="navigateToSession(session.id)"
             >
-              <span class="truncate transition-colors block font-medium" :class="activeSessionId === session.id ? 'text-[var(--ui-text-highlighted)]' : 'text-[var(--ui-text-muted)]'">{{ session.question.slice(0, 36) }}{{ session.question.length > 36 ? '…' : '' }}</span>
+              <span class="truncate transition-colors block font-medium" :class="selectedSessionId === session.id ? 'text-[var(--ui-text-highlighted)]' : 'text-[var(--ui-text-muted)]'">{{ session.question.slice(0, 36) }}{{ session.question.length > 36 ? '…' : '' }}</span>
               <div class="flex items-center gap-2 mt-1">
-                <span class="text-[11px] text-[var(--ui-text-dimmed)]">{{ formatDate(session.completedAt || session.createdAt) }}</span>
+                <ClientOnly>
+                  <span class="text-[11px] text-[var(--ui-text-dimmed)]">{{ formatDate(session.completedAt || session.createdAt) }}</span>
+                  <template #fallback>
+                    <span class="text-[11px] text-[var(--ui-text-dimmed)]">&nbsp;</span>
+                  </template>
+                </ClientOnly>
                 <span class="text-[11px] text-[var(--ui-text-muted)] font-medium">{{ session.confidenceLevel }}%</span>
               </div>
             </button>
@@ -97,7 +102,7 @@
 
     <!-- Main Content -->
     <main class="flex-1 overflow-hidden bg-[var(--ui-bg)] relative flex flex-col">
-      <div class="absolute top-[11px] left-3 z-50">
+      <div class="absolute top-[11px] left-60 z-50">
         <UButton
           :icon="isSidebarOpen ? 'i-lucide-panel-left-close' : 'i-lucide-panel-left'"
           variant="ghost"
@@ -113,8 +118,14 @@
 </template>
 
 <script setup lang="ts">
+const route = useRoute()
 const router = useRouter()
-const { sessions, activeSessionId } = useResearch()
+const { sessions, activeSessionId, refreshSessions } = useResearch()
+
+await useAsyncData('research-bootstrap', async () => {
+  await refreshSessions({ silent: true })
+  return true
+})
 
 const isSidebarOpen = ref(false)
 
@@ -129,6 +140,11 @@ const activeSessions = computed(() =>
 )
 const completedSessions = computed(() =>
   sessions.value.filter(s => s.phase === 'complete')
+)
+const selectedSessionId = computed(() =>
+  typeof route.params.id === 'string' && route.params.id.length > 0
+    ? route.params.id
+    : activeSessionId.value
 )
 
 const handleNewResearch = () => { router.push('/') }
@@ -156,13 +172,10 @@ const formatPhase = (phase: string) => {
   return l[phase] || phase
 }
 
-const formatDate = (dateStr: string) => {
-  const d = new Date(dateStr)
-  const diff = Date.now() - d.getTime()
-  const days = Math.floor(diff / 86400000)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days}d ago`
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+const historyDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  day: 'numeric',
+})
+
+const formatDate = (dateStr: string) => historyDateFormatter.format(new Date(dateStr))
 </script>

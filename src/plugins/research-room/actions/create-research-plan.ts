@@ -19,6 +19,7 @@ import {
   getNonEmptyString,
   parsePlanResponse,
 } from "../lib/planner";
+import { resolveResearchMessageContext } from "../lib/message-context";
 import { saveResearchPlan } from "../lib/plan-store";
 import { saveResearchState } from "../lib/research-state-store";
 
@@ -94,14 +95,14 @@ export const createResearchPlanAction: Action = {
 
     const result = createResearchPlan(plan);
     await saveResearchPlan(runtime, message, plan);
-    const room = await runtime.getRoom(message.roomId);
+    const context = await resolveResearchMessageContext(runtime, message);
     await saveResearchState(
       runtime,
       {
-        roomId: message.roomId,
-        worldId: message.worldId,
-        channelId: room?.channelId ?? message.roomId,
-        userId: message.entityId,
+        roomId: context.roomId,
+        worldId: context.worldId,
+        channelId: context.channelId,
+        userId: context.userId,
       },
       {
         question,

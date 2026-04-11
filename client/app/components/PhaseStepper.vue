@@ -34,7 +34,7 @@ const steps = [
 
 const phaseOrder: ResearchPhase[] = ['idle', 'planning', 'plan-review', 'researching', 'critiquing', 'synthesizing', 'complete']
 const phaseIndex = computed(() => phaseOrder.indexOf(props.phase))
-const getStepPhaseIndex = (key: string) => key === 'planning' ? phaseOrder.indexOf('planning') : phaseOrder.indexOf(key as ResearchPhase)
+const getStepPhaseIndex = (key: string) => key === 'planning' ? phaseOrder.indexOf('plan-review') : phaseOrder.indexOf(key as ResearchPhase)
 
 const isComplete = (key: string) => {
   const idx = getStepPhaseIndex(key)

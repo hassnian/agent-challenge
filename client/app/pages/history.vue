@@ -1,6 +1,5 @@
 <template>
-  <NuxtLayout>
-    <div class="h-full overflow-y-auto">
+  <div class="h-full overflow-y-auto">
       <div class="max-w-4xl mx-auto px-6 py-8">
         <div class="flex items-center justify-between mb-6">
           <div>
@@ -45,7 +44,6 @@
         </div>
       </div>
     </div>
-  </NuxtLayout>
 </template>
 
 <script setup lang="ts">

@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
 
   await approveChannelPlan(event, channelId, userId)
 
-  const refreshed = await getUserResearchSession(event, userId, channelId)
+  const refreshed = await getUserResearchSession(event, userId, channelId, { fresh: true })
 
   if (!refreshed.session) {
     throw createError({ statusCode: 404, statusMessage: 'Research session not found after approval.' })

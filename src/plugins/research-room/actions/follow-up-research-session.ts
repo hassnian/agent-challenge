@@ -15,6 +15,7 @@ import {
   parsePlanResponse,
 } from "../lib/planner";
 import { createDefaultResearchPlan, createResearchPlan } from "../lib/plan";
+import { resolveResearchMessageContext } from "../lib/message-context";
 import { queueResearchSessionTask } from "../lib/research-task";
 import { resolveStoredResearchSession } from "../lib/session-reference";
 import { saveResearchPlan } from "../lib/plan-store";
@@ -124,10 +125,11 @@ export const followUpResearchSessionAction: Action = {
       ...plan,
       approved: true,
     };
+    const context = await resolveResearchMessageContext(runtime, message);
 
     const queuedTask = await queueResearchSessionTask(runtime, {
-      roomId: message.roomId,
-      worldId: message.worldId,
+      roomId: context.roomId,
+      worldId: context.worldId,
       entityId: message.entityId,
       question: approvedPlan.question,
       plan: approvedPlan,
@@ -136,14 +138,13 @@ export const followUpResearchSessionAction: Action = {
     if (!queuedTask.alreadyQueued) {
       await saveResearchPlan(runtime, message, approvedPlan);
     }
-    const room = await runtime.getRoom(message.roomId);
     await saveResearchState(
       runtime,
       {
-        roomId: message.roomId,
-        worldId: message.worldId,
-        channelId: room?.channelId ?? message.roomId,
-        userId: message.entityId,
+        roomId: context.roomId,
+        worldId: context.worldId,
+        channelId: context.channelId,
+        userId: context.userId,
       },
       {
         question: approvedPlan.question,

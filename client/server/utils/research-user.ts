@@ -6,6 +6,7 @@ import {
 } from 'h3'
 
 const RESEARCH_USER_COOKIE = 'research_user_id'
+const RESEARCH_WORLD_SERVER_COOKIE = 'research_user_world_server_id'
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 const LEGACY_SHARED_USER_ID = 'ca615a1b-10ed-4da5-a9c6-1d1fc42b6a03'
 
@@ -31,4 +32,17 @@ export const getOrCreateResearchUserId = (event: H3Event) => {
   })
 
   return userId
+}
+
+export const hasResearchUserWorldForServer = (event: H3Event, messageServerId: string) => (
+  getCookie(event, RESEARCH_WORLD_SERVER_COOKIE)?.trim() === messageServerId
+)
+
+export const markResearchUserWorldReady = (event: H3Event, messageServerId: string) => {
+  setCookie(event, RESEARCH_WORLD_SERVER_COOKIE, messageServerId, {
+    path: '/',
+    sameSite: 'lax',
+    httpOnly: true,
+    maxAge: COOKIE_MAX_AGE_SECONDS,
+  })
 }

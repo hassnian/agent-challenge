@@ -182,6 +182,34 @@ export const updateChannelMetadata = async (
   })
 }
 
+export const ensureUserWorld = async (
+  event: H3Event,
+  agentId: string,
+  userId: string,
+  messageServerId: string
+) => {
+  return elizaFetch<{ success: boolean; data?: { world?: { id: string } } }>(
+    event,
+    `/api/agents/${agentId}/worlds`,
+    {
+      method: 'POST',
+      body: {
+        name: `User - ${userId.slice(0, 8)}`,
+        messageServerId,
+        metadata: {
+          ownership: {
+            ownerId: userId,
+          },
+          roles: {
+            [userId]: 'OWNER',
+          },
+          settings: {},
+        },
+      },
+    }
+  )
+}
+
 export const createMessagingSession = async (
   event: H3Event,
   input: {

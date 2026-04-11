@@ -1,5 +1,6 @@
 import type { IAgentRuntime, Memory } from "@elizaos/core";
 import type { ResearchSessionData } from "./session";
+import { resolveResearchMessageContext } from "./message-context";
 
 export const RESEARCH_SESSIONS_TABLE = "research_sessions";
 
@@ -92,11 +93,13 @@ export const saveResearchSession = async (
   session: ResearchSessionData,
   markdown: string
 ): Promise<void> => {
+  const context = await resolveResearchMessageContext(runtime, message);
+
   await saveResearchSessionForRoom(
     runtime,
     {
-      roomId: message.roomId,
-      worldId: message.worldId,
+      roomId: context.roomId,
+      worldId: context.worldId,
     },
     session,
     markdown

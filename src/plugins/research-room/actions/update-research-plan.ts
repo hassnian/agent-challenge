@@ -15,6 +15,7 @@ import {
   getNonEmptyString,
   parsePlanResponse,
 } from "../lib/planner";
+import { resolveResearchMessageContext } from "../lib/message-context";
 import { getLatestResearchPlan, saveResearchPlan } from "../lib/plan-store";
 import { saveResearchState } from "../lib/research-state-store";
 
@@ -113,14 +114,14 @@ export const updateResearchPlanAction: Action = {
 
     const rendered = createResearchPlan(updatedPlan);
     await saveResearchPlan(runtime, message, updatedPlan);
-    const room = await runtime.getRoom(message.roomId);
+    const context = await resolveResearchMessageContext(runtime, message);
     await saveResearchState(
       runtime,
       {
-        roomId: message.roomId,
-        worldId: message.worldId,
-        channelId: room?.channelId ?? message.roomId,
-        userId: message.entityId,
+        roomId: context.roomId,
+        worldId: context.worldId,
+        channelId: context.channelId,
+        userId: context.userId,
       },
       {
         question: updatedPlan.question,
