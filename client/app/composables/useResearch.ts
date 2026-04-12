@@ -105,7 +105,7 @@ const mergeSession = (
   const preferIncoming = options?.preferIncoming === true
   const keepIncomingPhase = preferIncoming || phaseOrder[incoming.phase] >= phaseOrder[current.phase]
   const mergedPhase = keepIncomingPhase ? incoming.phase : current.phase
-  const keepIncomingPlan = preferIncoming || (!!incoming.plan && !current.plan)
+  const keepIncomingPlan = preferIncoming || !!incoming.plan
   const incomingLooksFresher = phaseOrder[incoming.phase] > phaseOrder[current.phase]
 
   return {
@@ -171,6 +171,40 @@ const upsertSession = (
 
   sortSessions(next)
   sessions.value = next
+}
+
+const buildOptimisticApprovedSession = (session: ResearchSession): ResearchSession => {
+  const topics = session.plan?.topics ?? []
+  const hasStartedTopics = topics.some(topic => topic.status === 'done' || topic.status === 'active')
+  const nextTopics = hasStartedTopics
+    ? topics
+    : topics.map((topic, index) => ({
+      ...topic,
+      status: index === 0 ? 'active' : topic.status,
+    }))
+  const hasQueuedLog = session.progressLog.some(entry => entry.message === 'Plan approved. Research queued.')
+
+  return {
+    ...session,
+    phase: 'researching',
+    plan: session.plan
+      ? {
+        ...session.plan,
+        topics: nextTopics,
+      }
+      : null,
+    progressLog: hasQueuedLog
+      ? session.progressLog
+      : [
+        ...session.progressLog,
+        {
+          id: `optimistic-approve-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          role: 'planner',
+          message: 'Plan approved. Research queued.',
+        },
+      ],
+  }
 }
 
 export const useResearch = () => {
@@ -304,6 +338,14 @@ export const useResearch = () => {
   }
 
   const approvePlan = async (channelId: string) => {
+    const existing = sessions.value.find(session => session.id === channelId) || null
+
+    if (existing) {
+      upsertSession(sessions, buildOptimisticApprovedSession(existing), { preferIncoming: true })
+      activeSessionId.value = existing.id
+      startSessionPolling(existing.id)
+    }
+
     const session = await requestFetch<ResearchSession>(`/api/research/channels/${channelId}/approve`, {
       method: 'POST',
     })

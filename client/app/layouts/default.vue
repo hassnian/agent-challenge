@@ -102,13 +102,14 @@
 
     <!-- Main Content -->
     <main class="flex-1 overflow-hidden bg-[var(--ui-bg)] relative flex flex-col">
-      <div class="absolute top-[11px] left-60 z-50">
+      <div class="absolute top-[11px] left-4 z-50">
         <UButton
           :icon="isSidebarOpen ? 'i-lucide-panel-left-close' : 'i-lucide-panel-left'"
           variant="ghost"
           color="neutral"
           size="sm"
           class="text-[var(--ui-text-dimmed)] hover:text-[var(--ui-text-highlighted)] transition-colors"
+          aria-label="Toggle workspace sidebar"
           @click="isSidebarOpen = !isSidebarOpen"
         />
       </div>
