@@ -3,6 +3,19 @@
 Synapse is a personal research agent built with **ElizaOS**.
 It helps turn open-ended questions into structured, evidence-backed research sessions.
 
+## Project Structure
+
+```text
+.
+├── src/                  # agent source
+├── client/               # optional frontend
+├── nos_job_def/          # job definitions
+├── scripts/              # utility scripts
+├── Dockerfile
+├── .env.example
+└── README.md
+```
+
 ## What this repo contains
 
 - ElizaOS agent runtime
@@ -87,19 +100,6 @@ Run:
 
 ```bash
 docker run --rm -it -p 3000:3000 --env-file .env hassnian/nosana-eliza-agent:latest
-```
-
-## Project Structure
-
-```text
-.
-├── src/                  # agent source
-├── client/               # optional frontend
-├── nos_job_def/          # job definitions
-├── scripts/              # utility scripts
-├── Dockerfile
-├── .env.example
-└── README.md
 ```
 
 ## Notes
