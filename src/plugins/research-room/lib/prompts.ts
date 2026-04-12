@@ -104,7 +104,7 @@ ${skepticOutput}
 Return valid JSON only with this exact shape:
 {
   "answer": "short direct answer",
-  "summary": "short executive summary",
+  "summary": "detailed executive summary in 2-4 short paragraphs",
   "keyPoints": ["point 1", "point 2", "point 3"],
   "contestedPoints": ["point 1", "point 2"],
   "openQuestions": ["question 1", "question 2"]
@@ -112,7 +112,10 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
-- Keep it concise and practical
+- Keep the answer direct, but make the summary meaningfully more detailed than a one-liner
+- The summary should read like an executive brief: synthesize the strongest supported findings, the main caveats, and the practical implication or bottom line
+- Target roughly 120-220 words for the summary unless the evidence is too thin to support that much detail
+- Use 2-4 short paragraphs for the summary, not a single sentence
 - Each array should contain short strings
 - Use the skeptic notes to keep contested claims out of the final answer unless uncertainty is explicit
 `.trim();
