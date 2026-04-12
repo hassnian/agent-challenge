@@ -1,81 +1,8 @@
 <template>
   <div v-if="resolvedSession" class="h-full flex flex-col relative bg-[var(--ui-bg)] font-sans selection:bg-black/10 dark:selection:bg-white/10">
     <div class="flex-1 flex overflow-hidden">
-      <!-- Left Sidebar -->
-      <USidebar
-        v-if="showSessionRail"
-        v-model:open="isLeftSidebarOpen"
-        collapsible="offcanvas"
-        side="left"
-        :ui="leftSidebarUi"
-        :style="{ '--sidebar-width': '18rem' }"
-      >
-        <template #header>
-          <div class="px-5 py-5 border-b border-[var(--ui-border)]/50">
-            <p class="text-xs font-medium text-[var(--ui-text-dimmed)] mb-4">Research Progress</p>
-            <PhaseStepper :phase="resolvedSession.phase" />
-          </div>
-        </template>
-
-        <template #default>
-          <div class="flex min-h-0 flex-1 flex-col">
-            <div v-if="resolvedSession.plan && resolvedSession.phase !== 'plan-review'" class="p-5 border-b border-[var(--ui-border)]/50 flex-shrink-0">
-              <p class="text-xs font-medium text-[var(--ui-text-dimmed)] mb-3">Topic Outline</p>
-              <div class="space-y-1">
-                <div
-                  v-for="topic in resolvedSession.plan.topics"
-                  :key="topic.id"
-                  class="flex items-start gap-3 py-1.5"
-                >
-                  <span class="mt-0.5 shrink-0 text-xs">
-                    <span v-if="topic.status === 'done'" class="text-[var(--ui-text-muted)]">&#10003;</span>
-                    <span v-else-if="topic.status === 'active'" class="text-[var(--ui-text)]">&rarr;</span>
-                    <span v-else class="text-[var(--ui-text-dimmed)]">&#9675;</span>
-                  </span>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm" :class="topic.status === 'active' ? 'text-[var(--ui-text-highlighted)]' : 'text-[var(--ui-text)]'">{{ topic.title }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex-1 p-5 min-h-0 overflow-y-auto">
-              <p class="text-xs font-medium text-[var(--ui-text-dimmed)] mb-4">Activity Stream</p>
-              <div class="space-y-5 pb-4">
-                <div v-for="entry in allActivityEntries.slice(0, 30)" :key="entry.id" class="flex flex-col gap-1.5">
-                  <div class="flex items-center justify-between gap-1.5">
-                    <RoleBadge :role="entry.role" size="xs" />
-                    <ClientOnly v-if="entry.timestamp">
-                      <span class="text-xs text-[var(--ui-text-dimmed)]">{{ formatLogTime(entry.timestamp) }}</span>
-                    </ClientOnly>
-                  </div>
-                  <p class="text-[13px] text-[var(--ui-text)] leading-relaxed">{{ entry.message }}</p>
-                </div>
-                <div v-if="!resolvedSession.progressLog.length" class="text-center py-6">
-                  <p class="text-sm text-[var(--ui-text-dimmed)]">Waiting for system logs...</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </template>
-      </USidebar>
-
       <!-- Main Play Area -->
       <div class="relative flex-1 overflow-y-auto">
-        <div v-if="showSessionRail && !isLeftSidebarOpen" class="pointer-events-none sticky top-4 left-0 z-20 h-0 px-4">
-          <div class="pointer-events-auto inline-flex">
-            <UButton
-              icon="i-lucide-panel-left"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              class="bg-[var(--ui-bg)]/80 backdrop-blur-md"
-              aria-label="Expand progress sidebar"
-              @click="isLeftSidebarOpen = true"
-            />
-          </div>
-        </div>
-
         <div v-if="showRightRail && !isRightSidebarOpen" class="pointer-events-none sticky top-4 z-20 h-0 flex justify-end px-4">
           <div class="pointer-events-auto inline-flex">
             <UButton
@@ -91,9 +18,66 @@
         </div>
 
         <div :class="contentWrapperClass">
+          <section
+            v-if="showSessionOverview"
+            class="mb-10 mt-6 space-y-6"
+          >
+            <div class="rounded-2xl border border-[var(--ui-border)]/50 bg-[var(--ui-bg-elevated)]/70 p-5 backdrop-blur-sm">
+              <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div class="space-y-4">
+                  <p class="text-xs font-medium text-[var(--ui-text-dimmed)]">Research Progress</p>
+                  <PhaseStepper :phase="resolvedSession.phase" />
+                </div>
+
+                <div v-if="resolvedSession.plan && resolvedSession.phase !== 'plan-review'" class="min-w-0 lg:max-w-lg">
+                  <p class="mb-3 text-xs font-medium text-[var(--ui-text-dimmed)]">Topic Outline</p>
+                  <div class="space-y-1">
+                    <div
+                      v-for="topic in resolvedSession.plan.topics"
+                      :key="topic.id"
+                      class="flex items-start gap-3 py-1.5"
+                    >
+                      <span class="mt-0.5 shrink-0 text-xs">
+                        <span v-if="topic.status === 'done'" class="text-[var(--ui-text-muted)]">&#10003;</span>
+                        <span v-else-if="topic.status === 'active'" class="text-[var(--ui-text)]">&rarr;</span>
+                        <span v-else class="text-[var(--ui-text-dimmed)]">&#9675;</span>
+                      </span>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm" :class="topic.status === 'active' ? 'text-[var(--ui-text-highlighted)]' : 'text-[var(--ui-text)]'">{{ topic.title }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-[var(--ui-border)]/50 bg-[var(--ui-bg-elevated)]/40 p-5">
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-xs font-medium text-[var(--ui-text-dimmed)]">Activity Stream</p>
+                <p class="text-xs text-[var(--ui-text-dimmed)]">{{ sessionOverviewEntries.length }} latest updates</p>
+              </div>
+
+              <div class="mt-4 space-y-5">
+                <div v-for="entry in sessionOverviewEntries" :key="entry.id" class="flex flex-col gap-1.5">
+                  <div class="flex items-center justify-between gap-1.5">
+                    <RoleBadge :role="entry.role" size="xs" />
+                    <ClientOnly v-if="entry.timestamp">
+                      <span class="text-xs text-[var(--ui-text-dimmed)]">{{ formatLogTime(entry.timestamp) }}</span>
+                    </ClientOnly>
+                  </div>
+                  <p class="text-[13px] leading-relaxed text-[var(--ui-text)]">{{ entry.message }}</p>
+                </div>
+
+                <div v-if="!sessionOverviewEntries.length" class="py-6 text-center">
+                  <p class="text-sm text-[var(--ui-text-dimmed)]">Waiting for system logs...</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <!-- Phase: Planning -->
           <template v-if="!resolvedSession.plan && resolvedSession.phase === 'planning'">
-            <div class="mb-10 mt-6">
+            <div class="mb-10">
               <p class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)] mb-3">Initializing Objective...</p>
               <h2 class="text-[28px] leading-tight font-serif text-[var(--ui-text-highlighted)]">{{ resolvedSession.question }}</h2>
             </div>
@@ -109,7 +93,7 @@
 
           <!-- Phase: Plan Review -->
           <template v-else-if="resolvedSession.phase === 'plan-review'">
-            <div class="mb-10 mt-6">
+            <div class="mb-10">
               <p class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)] mb-3">Proposed Research Layout</p>
               <h1 class="text-[28px] leading-tight font-serif text-[var(--ui-text-highlighted)] max-w-3xl">{{ resolvedSession.question }}</h1>
             </div>
@@ -338,7 +322,6 @@ const sessionLookupComplete = ref(false)
 const lastKnownQuestion = ref('')
 const isApprovingPlan = ref(false)
 const showFullActivity = ref(false)
-const isLeftSidebarOpen = ref(true)
 const isRightSidebarOpen = ref(true)
 
 const getErrorStatusCode = (error: unknown) => {
@@ -480,18 +463,12 @@ watch(() => resolvedSession.value?.phase, () => {
   showFullActivity.value = false
 })
 
-const showSessionRail = computed(() => {
+const showSessionOverview = computed(() => {
   const phase = resolvedSession.value?.phase
   return phase === 'planning' || phase === 'plan-review'
 })
 
 const showRightRail = computed(() => resolvedSession.value?.phase === 'complete')
-
-watch(showSessionRail, (visible) => {
-  if (visible) {
-    isLeftSidebarOpen.value = true
-  }
-}, { immediate: true })
 
 watch(showRightRail, (visible) => {
   if (visible) {
@@ -513,6 +490,10 @@ const contentWrapperClass = computed(() => {
     return 'max-w-5xl mx-auto w-full px-6 sm:px-8 py-8'
   }
 
+  if (showSessionOverview.value) {
+    return 'max-w-4xl mx-auto w-full px-6 sm:px-8 py-8'
+  }
+
   return 'max-w-2xl mx-auto w-full px-8 py-8'
 })
 
@@ -521,13 +502,6 @@ const rightPanelTabs = computed(() => [
   { label: `Critique (${resolvedSession.value?.critiques.length || 0})`, value: 'critique', slot: 'critique' as const },
   { label: `Contested (${resolvedSession.value?.contested.length || 0})`, value: 'contested', slot: 'contested' as const },
 ])
-
-const leftSidebarUi = {
-  container: 'h-full',
-  inner: 'h-full bg-[var(--ui-bg-elevated)] divide-transparent',
-  header: 'block min-h-0 px-0 py-0',
-  body: 'min-h-0 flex-1 gap-0 p-0',
-}
 
 const rightSidebarUi = {
   container: 'h-full',
@@ -543,24 +517,6 @@ const phaseLabel = computed(() => {
     synthesizing: 'Synthesizing',
   }
   return labels[resolvedSession.value?.phase || ''] || 'In Progress'
-})
-
-const phaseTextColor = computed(() => {
-  const colors: Record<string, string> = {
-    researching: 'text-blue-600',
-    critiquing: 'text-orange-600',
-    synthesizing: 'text-violet-600',
-  }
-  return colors[resolvedSession.value?.phase || ''] || 'text-[var(--ui-text-muted)]'
-})
-
-const activeStateCardClass = computed(() => {
-  const classes: Record<string, string> = {
-    researching: 'border-blue-500/30 bg-blue-500/5',
-    critiquing: 'border-orange-500/30 bg-orange-500/5',
-    synthesizing: 'border-violet-500/30 bg-violet-500/5',
-  }
-  return classes[resolvedSession.value?.phase || ''] || 'border-[var(--ui-border)] bg-[var(--ui-bg-elevated)]'
 })
 
 const latestInvestigatingTopicTitle = computed(() => {
@@ -641,6 +597,7 @@ const currentPhaseRole = computed<ProgressRole | null>(() => {
 })
 
 const allActivityEntries = computed(() => [...(resolvedSession.value?.progressLog ?? [])].reverse())
+const sessionOverviewEntries = computed(() => allActivityEntries.value.slice(0, 8))
 
 const currentPhaseEntries = computed(() => {
   const role = currentPhaseRole.value

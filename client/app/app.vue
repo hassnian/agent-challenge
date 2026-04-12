@@ -8,9 +8,9 @@
 
 <script setup lang="ts">
 useHead({
-  title: 'Research Council — Personal Decision Research',
+  title: 'Synapse — Personal Research Agent',
   meta: [
-    { name: 'description', content: 'Turn hard questions into evidence-backed decision memos. A personal research council powered by AI.' },
+    { name: 'description', content: 'Turn hard questions into evidence-backed decision memos with Synapse, a personal research agent powered by AI.' },
   ],
   link: [
     { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

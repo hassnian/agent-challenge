@@ -1,13 +1,13 @@
 <template>
-  <div class="h-full flex flex-col">
+  <div class="mx-auto flex h-full w-full max-w-3xl flex-1 flex-col px-6">
       <!-- Hero Input -->
-      <div class="flex-1 flex flex-col items-center justify-center px-6 relative overflow-hidden">
+      <div class="relative flex flex-1 flex-col justify-center overflow-hidden py-12">
         <!-- Decoration -->
         <div class="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none opacity-20 dark:opacity-10 blur-3xl">
           <div class="w-72 h-72 bg-gradient-to-br from-[var(--ui-primary)]/20 to-[var(--ui-bg)] rounded-full" />
         </div>
 
-        <div class="w-full max-w-xl text-center relative z-10">
+        <div class="mx-auto w-full max-w-xl text-center relative z-10">
           <h1 class="text-2xl font-serif font-normal tracking-tight text-[var(--ui-text-highlighted)] mb-3">
             What decision are you researching?
           </h1>
@@ -45,8 +45,7 @@
       </div>
 
       <!-- Recent Sessions -->
-      <div v-if="recentSessions.length" class="border-t border-[var(--ui-border)]/30">
-        <div class="max-w-3xl mx-auto px-6 py-6">
+      <div v-if="recentSessions.length" class="border-t border-[var(--ui-border)]/30 py-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm font-medium text-[var(--ui-text-muted)]">Recent Research</h2>
             <UButton
@@ -81,12 +80,11 @@
               </div>
             </div>
           </div>
-        </div>
       </div>
 
       <!-- Examples -->
-      <div v-else class="border-t border-[var(--ui-border)]/30">
-        <div class="max-w-md mx-auto px-6 py-8">
+      <div v-else class="border-t border-[var(--ui-border)]/30 py-8">
+        <div class="mx-auto w-full max-w-md">
           <h2 class="text-sm font-medium text-[var(--ui-text-dimmed)] mb-4 text-center">Try an example</h2>
           <div class="flex flex-col gap-2">
             <button
