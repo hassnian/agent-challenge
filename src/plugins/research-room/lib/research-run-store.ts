@@ -20,6 +20,8 @@ export type ResearchRunRecord = {
   text: string;
   topicCount: number;
   evidenceCount: number;
+  currentTopicIndex: number;
+  completedTopicCount: number;
   createdAt: number;
   updatedAt: number;
   error?: string;

@@ -61,6 +61,8 @@ export type ResearchExecutionProgress = {
   text: string;
   evidenceCount: number;
   topicCount: number;
+  currentTopicIndex: number;
+  completedTopicCount: number;
 };
 
 export type ExecuteResearchSessionParams = {
@@ -576,15 +578,20 @@ export const executeResearchSession = async (
       : `Searcher is starting the research phase across ${plan.topics.length} approved topics without live web evidence.`,
     evidenceCount: 0,
     topicCount: plan.topics.length,
+    currentTopicIndex: 0,
+    completedTopicCount: 0,
   });
 
-  for (const topic of plan.topics) {
+  for (let topicIndex = 0; topicIndex < plan.topics.length; topicIndex++) {
+    const topic = plan.topics[topicIndex];
     await emitProgress(params, {
       phase: "searching",
       role: "searcher",
       text: `Searcher is investigating: ${topic.title}`,
       evidenceCount: evidence.length,
       topicCount: plan.topics.length,
+      currentTopicIndex: topicIndex,
+      completedTopicCount: topicIndex,
     });
 
     const fallbackTopicResult = createDefaultTopicResearchResult(topic.id, topic.title);
@@ -648,6 +655,8 @@ export const executeResearchSession = async (
         text: `Searcher collected ${topicEvidence.length} evidence cards for ${topic.title}.`,
         evidenceCount: evidence.length,
         topicCount: plan.topics.length,
+        currentTopicIndex: topicIndex,
+        completedTopicCount: topicIndex + 1,
       });
     }
 
@@ -697,6 +706,8 @@ export const executeResearchSession = async (
     text: "Skeptic is challenging weak claims, missing evidence, and unresolved gaps.",
     evidenceCount: evidence.length,
     topicCount: plan.topics.length,
+    currentTopicIndex: plan.topics.length,
+    completedTopicCount: plan.topics.length,
   });
 
   try {
@@ -730,6 +741,8 @@ export const executeResearchSession = async (
     text: "Synthesizer is combining the strongest supported findings into a final report.",
     evidenceCount: evidence.length,
     topicCount: plan.topics.length,
+    currentTopicIndex: plan.topics.length,
+    completedTopicCount: plan.topics.length,
   });
 
   try {
@@ -800,6 +813,8 @@ export const executeResearchSession = async (
       : "Research session completed.",
     evidenceCount: session.data.evidence.length,
     topicCount: session.data.topicResults.length,
+    currentTopicIndex: session.data.topicResults.length,
+    completedTopicCount: session.data.topicResults.length,
   });
 
   return session;

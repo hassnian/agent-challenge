@@ -24,6 +24,8 @@ type ResearchTaskMetadata = {
   status?: ResearchRunStatus;
   evidenceCount?: number;
   topicCount?: number;
+  currentTopicIndex?: number;
+  completedTopicCount?: number;
   queuedAt?: number;
   updatedAt?: number;
 };
@@ -55,12 +57,16 @@ const saveRunState = async (
     text: string;
     evidenceCount: number;
     topicCount: number;
+    currentTopicIndex?: number;
+    completedTopicCount?: number;
     error?: string;
   }
 ): Promise<void> => {
   const timestamp = Date.now();
   const taskCreatedAt =
     typeof task.metadata?.queuedAt === "number" ? task.metadata.queuedAt : timestamp;
+  const currentTopicIndex = state.currentTopicIndex ?? 0;
+  const completedTopicCount = state.completedTopicCount ?? 0;
 
   if (task.id) {
     await runtime.updateTask(task.id, {
@@ -78,6 +84,8 @@ const saveRunState = async (
         status: state.status,
         evidenceCount: state.evidenceCount,
         topicCount: state.topicCount,
+        currentTopicIndex,
+        completedTopicCount,
         updatedAt: timestamp,
         error: state.error,
         },
@@ -99,6 +107,8 @@ const saveRunState = async (
         text: state.text,
         topicCount: state.topicCount,
         evidenceCount: state.evidenceCount,
+        currentTopicIndex,
+        completedTopicCount,
         createdAt: taskCreatedAt,
         updatedAt: timestamp,
         error: state.error,
@@ -139,6 +149,8 @@ const saveRunState = async (
         text: state.text,
         topicCount: state.topicCount,
         evidenceCount: state.evidenceCount,
+        currentTopicIndex,
+        completedTopicCount,
         createdAt: taskCreatedAt,
         updatedAt: timestamp,
         error: state.error,
@@ -272,6 +284,8 @@ export const researchSessionTaskWorker: TaskWorker = {
       text: "Research task started.",
       evidenceCount: 0,
       topicCount: plan.topics.length,
+      currentTopicIndex: 0,
+      completedTopicCount: 0,
     });
     await saveResearchRunRecord(
       runtime,
@@ -287,6 +301,8 @@ export const researchSessionTaskWorker: TaskWorker = {
         text: "Research task started.",
         topicCount: plan.topics.length,
         evidenceCount: 0,
+        currentTopicIndex: 0,
+        completedTopicCount: 0,
         createdAt: now,
         updatedAt: now,
       }
@@ -311,6 +327,8 @@ export const researchSessionTaskWorker: TaskWorker = {
             text: progress.text,
             evidenceCount: progress.evidenceCount,
             topicCount: progress.topicCount,
+            currentTopicIndex: progress.currentTopicIndex,
+            completedTopicCount: progress.completedTopicCount,
           });
         },
       });

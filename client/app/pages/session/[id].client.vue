@@ -19,7 +19,7 @@
                   <span v-else class="text-[var(--ui-text-dimmed)]">○</span>
                 </span>
                 <div class="flex-1 min-w-0">
-                  <p class="text-[13px] font-medium text-[var(--ui-text-highlighted)]">{{ topic.title }}</p>
+                  <p class="text-[13px] font-medium" :class="topic.status === 'active' ? 'text-blue-400' : 'text-[var(--ui-text-highlighted)]'">{{ topic.title }}</p>
                   <p class="text-[11px] text-[var(--ui-text-muted)] mt-0.5">{{ topic.queries.length }} queries</p>
                 </div>
               </div>
@@ -54,7 +54,7 @@
             <!-- Planning -->
             <template v-if="!resolvedSession.plan && resolvedSession.phase === 'planning'">
               <div class="mb-8">
-                <p class="text-[12px] font-medium tracking-wide uppercase mb-3 flex items-center gap-2 text-amber-600">
+                <p class="text-[12px] font-medium tracking-wide mb-3 flex items-center gap-2 text-amber-600">
                   <span class="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
                   Creating Plan
                 </p>
@@ -82,10 +82,9 @@
 
             <!-- Plan Review -->
             <template v-else-if="resolvedSession.phase === 'plan-review'">
-              <div class="mb-6">
+              <div class="mb-8">
                 <p class="text-[12px] font-medium text-amber-600 mb-2">Plan Ready</p>
-                <h2 class="text-xl font-semibold text-[var(--ui-text-highlighted)] mb-1">Review Your Research Plan</h2>
-                <p class="text-sm text-[var(--ui-text-muted)]">Review the topics below. Once approved, evidence collection begins.</p>
+                <h1 class="text-3xl font-bold tracking-tight text-[var(--ui-text-highlighted)]">{{ resolvedSession.question }}</h1>
               </div>
               <div class="space-y-2.5 mb-6">
                 <div v-for="(topic, i) in resolvedSession.plan?.topics" :key="topic.id" class="p-4 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)]">
@@ -114,36 +113,98 @@
                   {{ phaseLabel }}
                 </p>
                 <h2 class="text-3xl font-bold tracking-tight text-[var(--ui-text-highlighted)] mb-2">{{ resolvedSession.question }}</h2>
-                <p class="text-[15px] text-[var(--ui-text-muted)]">Memo is being written as research progresses…</p>
               </div>
-              <div class="flex gap-6 mb-6 py-3 border-y border-[var(--ui-border)]">
-                <div>
-                  <p class="text-[11px] text-[var(--ui-text-dimmed)]">Sources</p>
-                  <p class="text-lg font-semibold text-[var(--ui-text-highlighted)] tabular-nums">{{ resolvedSession.evidence.length }}</p>
+
+              <!-- Phase-specific main content -->
+              <div v-if="resolvedSession.phase === 'researching'" class="space-y-6">
+                <!-- Current topic being investigated -->
+                <div v-if="activeTopic" class="p-5 rounded-xl border border-blue-500/30 bg-blue-500/5 animate-slide-up">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    <p class="text-[11px] font-semibold text-blue-400 uppercase tracking-wider">Currently Investigating</p>
+                    <span class="text-[11px] text-[var(--ui-text-muted)] ml-auto">{{ completedTopicCount }}/{{ totalTopics }} topics done</span>
+                  </div>
+                  <h3 class="text-lg font-semibold text-[var(--ui-text-highlighted)] mb-2">{{ activeTopic.title }}</h3>
+                  <div class="flex flex-wrap gap-1.5">
+                    <span v-for="query in activeTopic.queries" :key="query" class="text-[11px] text-[var(--ui-text-muted)] px-2 py-0.5 rounded-full bg-[var(--ui-bg-accented)]">{{ query }}</span>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-[11px] text-[var(--ui-text-dimmed)]">Objections</p>
-                  <p class="text-lg font-semibold text-[var(--ui-text-highlighted)] tabular-nums">{{ resolvedSession.critiques.length }}</p>
+
+                <!-- Progress bar -->
+                <div class="flex items-center gap-3">
+                  <div class="flex-1 h-1.5 rounded-full bg-[var(--ui-bg-elevated)] overflow-hidden">
+                    <div class="h-full rounded-full bg-blue-500 transition-all duration-700" :style="{ width: `${researchProgressPercent}%` }" />
+                  </div>
+                  <span class="text-[11px] font-medium text-[var(--ui-text-muted)] tabular-nums">{{ researchProgressPercent }}%</span>
                 </div>
-                <div>
-                  <p class="text-[11px] text-[var(--ui-text-dimmed)]">Contested</p>
-                  <p class="text-lg font-semibold text-[var(--ui-text-highlighted)] tabular-nums">{{ resolvedSession.contested.length }}</p>
+
+                <!-- Evidence collected so far -->
+                <div v-if="resolvedSession.evidence.length > 0">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)]">Evidence Collected</h3>
+                    <span class="text-[11px] text-[var(--ui-text-muted)]">{{ resolvedSession.evidence.length }} sources</span>
+                  </div>
+                  <div class="space-y-2">
+                    <div v-for="ev in resolvedSession.evidence.slice(0, 5)" :key="ev.id" class="p-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)]">
+                      <div class="flex items-start gap-2">
+                        <span class="text-[11px] font-medium text-blue-400 shrink-0 mt-0.5">{{ ev.domain }}</span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-[13px] font-medium text-[var(--ui-text-highlighted)] truncate">{{ ev.title }}</p>
+                          <p class="text-[11px] text-[var(--ui-text-muted)] mt-0.5 line-clamp-2">{{ ev.snippet }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div v-if="resolvedSession.summary" class="animate-slide-up mb-6">
-                <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)] mb-2">Executive Summary</h3>
-                <p class="text-sm text-[var(--ui-text)] leading-relaxed whitespace-pre-line">{{ resolvedSession.summary }}</p>
+
+              <!-- Critiquing phase -->
+              <div v-else-if="resolvedSession.phase === 'critiquing'" class="space-y-6">
+                <div class="p-5 rounded-xl border border-orange-500/30 bg-orange-500/5 animate-slide-up">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                    <p class="text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Skeptic Review</p>
+                  </div>
+                  <p class="text-sm text-[var(--ui-text)]">Challenging weak claims, missing evidence, and unresolved gaps across {{ resolvedSession.evidence.length }} sources.</p>
+                </div>
+
+                <div v-if="resolvedSession.critiques.length > 0" class="space-y-3">
+                  <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)]">Issues Found</h3>
+                  <div v-for="critique in resolvedSession.critiques.slice(0, 5)" :key="critique.id" class="p-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)]">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-[10px] font-semibold uppercase tracking-wider" :class="critique.severity === 'high' ? 'text-red-400' : critique.severity === 'medium' ? 'text-amber-400' : 'text-[var(--ui-text-muted)]'">{{ critique.severity }}</span>
+                      <span class="text-[10px] text-[var(--ui-text-muted)]">{{ critique.type }}</span>
+                    </div>
+                    <p class="text-[13px] font-medium text-[var(--ui-text-highlighted)]">{{ critique.claim }}</p>
+                    <p class="text-[12px] text-[var(--ui-text-muted)] mt-1">{{ critique.critique }}</p>
+                  </div>
+                </div>
               </div>
-              <div v-else class="space-y-3 mb-6">
-                <div class="shimmer h-3.5 rounded w-full" />
-                <div class="shimmer h-3.5 rounded w-5/6" />
-                <div class="shimmer h-3.5 rounded w-4/6" />
-                <div class="shimmer h-3.5 rounded w-full" />
-                <div class="shimmer h-3.5 rounded w-3/6" />
-              </div>
-              <div v-if="resolvedSession.finalAnswer" class="animate-slide-up">
-                <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)] mb-2">Final Recommendation</h3>
-                <div class="text-sm text-[var(--ui-text)] leading-relaxed whitespace-pre-line">{{ resolvedSession.finalAnswer }}</div>
+
+              <!-- Synthesizing phase -->
+              <div v-else-if="resolvedSession.phase === 'synthesizing'" class="space-y-6">
+                <div class="p-5 rounded-xl border border-violet-500/30 bg-violet-500/5 animate-slide-up">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                    <p class="text-[11px] font-semibold text-violet-400 uppercase tracking-wider">Synthesizing Findings</p>
+                  </div>
+                  <p class="text-sm text-[var(--ui-text)]">Combining the strongest supported findings into a final report.</p>
+                </div>
+
+                <div v-if="resolvedSession.summary" class="animate-slide-up">
+                  <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)] mb-2">Executive Summary</h3>
+                  <p class="text-sm text-[var(--ui-text)] leading-relaxed whitespace-pre-line">{{ resolvedSession.summary }}</p>
+                </div>
+                <div v-else class="space-y-3">
+                  <div class="shimmer h-3.5 rounded w-full" />
+                  <div class="shimmer h-3.5 rounded w-5/6" />
+                  <div class="shimmer h-3.5 rounded w-4/6" />
+                </div>
+
+                <div v-if="resolvedSession.finalAnswer" class="animate-slide-up">
+                  <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)] mb-2">Final Recommendation</h3>
+                  <div class="text-sm text-[var(--ui-text)] leading-relaxed whitespace-pre-line">{{ resolvedSession.finalAnswer }}</div>
+                </div>
               </div>
             </template>
 
@@ -154,24 +215,24 @@
           </div>
         </div>
 
-        <!-- RIGHT -->
-        <aside v-if="showRightPanel" class="w-80 border-l border-[var(--ui-border)] flex flex-col shrink-0 overflow-hidden bg-[var(--ui-bg-elevated)]">
+        <!-- RIGHT - Only show for complete phase -->
+        <aside v-if="resolvedSession.phase === 'complete'" class="w-80 border-l border-[var(--ui-border)] flex flex-col shrink-0 overflow-hidden bg-[var(--ui-bg-elevated)]">
           <UTabs :items="rightPanelTabs" :default-value="rightPanelTabs[0]?.value ?? 'evidence'" class="flex flex-col h-full min-h-0" :ui="{ trigger: 'text-[12px] font-medium', content: 'flex-1 overflow-y-auto min-h-0' }">
             <template #evidence>
               <div class="p-3 space-y-3 stagger-children">
-                <p v-if="!resolvedSession?.evidence?.length" class="text-[13px] font-medium text-[var(--ui-text-muted)] text-center py-8">Evidence will appear here…</p>
+                <p v-if="!resolvedSession?.evidence?.length" class="text-[13px] font-medium text-[var(--ui-text-muted)] text-center py-8">No evidence collected</p>
                 <EvidenceCardComponent v-for="ev in resolvedSession?.evidence" :key="ev.id" :evidence="ev" />
               </div>
             </template>
             <template #critique>
               <div class="p-3 space-y-3 stagger-children">
-                <p v-if="!resolvedSession?.critiques?.length" class="text-[13px] font-medium text-[var(--ui-text-muted)] text-center py-8">Critique notes appear after evidence review</p>
+                <p v-if="!resolvedSession?.critiques?.length" class="text-[13px] font-medium text-[var(--ui-text-muted)] text-center py-8">No critiques</p>
                 <CritiqueCard v-for="critique in resolvedSession?.critiques" :key="critique.id" :critique="critique" />
               </div>
             </template>
             <template #contested>
               <div class="p-3 space-y-3 stagger-children">
-                <p v-if="!resolvedSession?.contested?.length" class="text-[13px] font-medium text-[var(--ui-text-muted)] text-center py-8">Contested points appear after critique</p>
+                <p v-if="!resolvedSession?.contested?.length" class="text-[13px] font-medium text-[var(--ui-text-muted)] text-center py-8">No contested points</p>
                 <ContestedCard v-for="cp in resolvedSession?.contested" :key="cp.id" :contested="cp" />
               </div>
             </template>
@@ -188,7 +249,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ResearchSession } from '~/composables/useResearch'
+import type { ResearchSession, ResearchTopic } from '~/composables/useResearch'
 
 const route = useRoute()
 const { sessions, activeSessionId, approvePlan, loadSession, refreshSessions, startSessionPolling, isPlaceholderSession, isOptimisticSession } = useResearch()
@@ -331,8 +392,6 @@ const resolvedSession = computed<ResearchSession | null>(() => {
   return null
 })
 
-const showRightPanel = computed(() => resolvedSession.value && !['idle', 'planning', 'plan-review'].includes(resolvedSession.value.phase))
-
 const rightPanelTabs = computed(() => [
   { label: `Evidence (${resolvedSession.value?.evidence.length || 0})`, value: 'evidence', slot: 'evidence' as const },
   { label: `Critique (${resolvedSession.value?.critiques.length || 0})`, value: 'critique', slot: 'critique' as const },
@@ -346,6 +405,22 @@ const phaseLabel = computed(() => {
 const phaseTextColor = computed(() => {
   const c: Record<string, string> = { researching: 'text-blue-600', critiquing: 'text-orange-600', synthesizing: 'text-violet-600' }
   return c[resolvedSession.value?.phase || ''] || 'text-[var(--ui-text-muted)]'
+})
+
+const activeTopic = computed<ResearchTopic | null>(() => {
+  const topics = resolvedSession.value?.plan?.topics ?? []
+  return topics.find(t => t.status === 'active') || null
+})
+
+const totalTopics = computed(() => resolvedSession.value?.plan?.topics.length ?? 0)
+
+const completedTopicCount = computed(() => {
+  return resolvedSession.value?.plan?.topics.filter(t => t.status === 'done').length ?? 0
+})
+
+const researchProgressPercent = computed(() => {
+  if (totalTopics.value === 0) return 0
+  return Math.round((completedTopicCount.value / totalTopics.value) * 100)
 })
 
 const handleApprove = async () => {

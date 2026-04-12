@@ -160,6 +160,8 @@ export const followUpResearchSessionAction: Action = {
             : "Follow-up research task queued.",
           topicCount: approvedPlan.topics.length,
           evidenceCount: 0,
+          currentTopicIndex: 0,
+          completedTopicCount: 0,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         },

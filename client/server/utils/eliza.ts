@@ -73,6 +73,8 @@ type ResearchRunRecord = {
   text: string
   topicCount: number
   evidenceCount: number
+  currentTopicIndex: number
+  completedTopicCount: number
   createdAt: number
   updatedAt: number
   error?: string
@@ -617,16 +619,30 @@ const toUiSessionFromState = (
   const createdAt = normalizeDate(state.createdAt, Date.now())
   const completedAt = session ? new Date(session.completedAt).toISOString() : null
 
-  const planTopics = (session?.plan.topics ?? state.plan?.topics ?? []).map((topic) => ({
-    id: topic.id,
-    title: topic.title,
-    queries: topic.searchQueries,
-    status: phase === 'complete'
-      ? 'done' as const
-      : phase === 'researching' || phase === 'critiquing' || phase === 'synthesizing'
-        ? 'active' as const
-        : 'pending' as const,
-  }))
+  const planTopics = (session?.plan.topics ?? state.plan?.topics ?? []).map((topic, index) => {
+    const topicIndex = index
+    const completedCount = state.run?.completedTopicCount ?? 0
+    const currentIndex = state.run?.currentTopicIndex ?? 0
+    const isResearching = phase === 'researching' || phase === 'critiquing' || phase === 'synthesizing'
+
+    let status: 'pending' | 'active' | 'done' = 'pending'
+    if (phase === 'complete') {
+      status = 'done'
+    } else if (isResearching) {
+      if (topicIndex < completedCount) {
+        status = 'done'
+      } else if (topicIndex === currentIndex && phase === 'researching') {
+        status = 'active'
+      }
+    }
+
+    return {
+      id: topic.id,
+      title: topic.title,
+      queries: topic.searchQueries,
+      status,
+    }
+  })
 
   const evidence = (session?.evidence ?? []).map((item, index) => ({
     id: `evidence-${index}`,
