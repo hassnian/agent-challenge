@@ -149,7 +149,7 @@ export const createResearchSession = ({
       {
         role: "searcher",
         status: "done",
-        text: `Completed research on ${topicResults.length} topics.`,
+        text: `Completed ${topicResults.length} topics.`,
       },
       {
         role: "skeptic",

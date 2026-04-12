@@ -574,8 +574,8 @@ export const executeResearchSession = async (
     phase: "searching",
     role: "searcher",
     text: hasAnySearchProvider
-      ? `Searcher is starting the research phase across ${plan.topics.length} approved topics with live web evidence.`
-      : `Searcher is starting the research phase across ${plan.topics.length} approved topics without live web evidence.`,
+      ? `Starting across ${plan.topics.length} approved topics with live web evidence.`
+      : `Starting across ${plan.topics.length} approved topics without live web evidence.`,
     evidenceCount: 0,
     topicCount: plan.topics.length,
     currentTopicIndex: 0,
@@ -587,7 +587,7 @@ export const executeResearchSession = async (
     await emitProgress(params, {
       phase: "searching",
       role: "searcher",
-      text: `Searcher is investigating: ${topic.title}`,
+      text: `Investigating: ${topic.title}`,
       evidenceCount: evidence.length,
       topicCount: plan.topics.length,
       currentTopicIndex: topicIndex,
@@ -652,7 +652,7 @@ export const executeResearchSession = async (
       await emitProgress(params, {
         phase: "searching",
         role: "searcher",
-        text: `Searcher collected ${topicEvidence.length} evidence cards for ${topic.title}.`,
+        text: `Collected ${topicEvidence.length} evidence cards for ${topic.title}.`,
         evidenceCount: evidence.length,
         topicCount: plan.topics.length,
         currentTopicIndex: topicIndex,
@@ -703,7 +703,7 @@ export const executeResearchSession = async (
   await emitProgress(params, {
     phase: "challenging",
     role: "skeptic",
-    text: "Skeptic is challenging weak claims, missing evidence, and unresolved gaps.",
+    text: "Challenging weak claims, missing evidence, and unresolved gaps.",
     evidenceCount: evidence.length,
     topicCount: plan.topics.length,
     currentTopicIndex: plan.topics.length,
@@ -738,7 +738,7 @@ export const executeResearchSession = async (
   await emitProgress(params, {
     phase: "synthesizing",
     role: "synthesizer",
-    text: "Synthesizer is combining the strongest supported findings into a final report.",
+    text: "Combining the strongest supported findings into a final report.",
     evidenceCount: evidence.length,
     topicCount: plan.topics.length,
     currentTopicIndex: plan.topics.length,
@@ -809,8 +809,8 @@ export const executeResearchSession = async (
     phase: "done",
     role: "synthesizer",
     text: degraded
-      ? "Research session completed with fallback-only output and no live evidence."
-      : "Research session completed.",
+      ? "Completed with fallback-only output and no live evidence."
+      : "Completed.",
     evidenceCount: session.data.evidence.length,
     topicCount: session.data.topicResults.length,
     currentTopicIndex: session.data.topicResults.length,

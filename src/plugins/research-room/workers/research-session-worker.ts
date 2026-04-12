@@ -159,7 +159,7 @@ const saveRunState = async (
         state.status === "completed"
           ? {
               role: "synthesizer",
-              message: "Research completed and final memo saved.",
+              message: "Completed and final memo saved.",
               timestamp,
             }
           : state.status === "failed"
@@ -200,7 +200,7 @@ export const researchSessionTaskWorker: TaskWorker = {
         question,
         status: "failed",
         phase: "failed",
-        text: "Research task failed because no approved plan snapshot was attached.",
+        text: "Failed because no approved plan snapshot was attached.",
         evidenceCount: 0,
         topicCount: 0,
         error: "MISSING_PLAN",
@@ -281,7 +281,7 @@ export const researchSessionTaskWorker: TaskWorker = {
       question,
       status: "running",
       phase: "searching",
-      text: "Research task started.",
+      text: "Started.",
       evidenceCount: 0,
       topicCount: plan.topics.length,
       currentTopicIndex: 0,
@@ -298,7 +298,7 @@ export const researchSessionTaskWorker: TaskWorker = {
         question,
         status: "running",
         phase: "searching",
-        text: "Research task started.",
+        text: "Started.",
         topicCount: plan.topics.length,
         evidenceCount: 0,
         currentTopicIndex: 0,
@@ -339,8 +339,8 @@ export const researchSessionTaskWorker: TaskWorker = {
         status: "completed",
         phase: "done",
         text: degraded
-          ? "Research task completed with fallback-only output; no usable live evidence was captured."
-          : "Research task completed and the session was saved.",
+          ? "Completed with fallback-only output; no usable live evidence was captured."
+          : "Completed and the session was saved.",
         evidenceCount: session.data.evidence.length,
         topicCount: session.data.topicResults.length,
       });
@@ -370,7 +370,7 @@ export const researchSessionTaskWorker: TaskWorker = {
         question,
         status: "failed",
         phase: "failed",
-        text: "Research task failed before the final memo could be completed.",
+        text: "Failed before the final memo could be completed.",
         evidenceCount: 0,
         topicCount: plan.topics.length,
         error: error instanceof Error ? error.message : String(error),
