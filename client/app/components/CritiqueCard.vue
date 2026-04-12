@@ -1,8 +1,8 @@
 <template>
-  <div class="p-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-bg)]">
+  <div class="py-3 border-b border-[var(--ui-border)]/30 last:border-0">
     <div class="flex items-center gap-2 mb-1.5">
-      <UBadge :label="typeLabel" size="xs" :color="typeColor" variant="subtle" />
-      <UBadge v-if="critique.severity === 'high'" label="High" size="xs" color="error" variant="subtle" />
+      <span class="text-[10px] font-semibold uppercase tracking-wider" :class="typeTextColor">{{ typeLabel }}</span>
+      <span v-if="critique.severity === 'high'" class="text-[10px] font-semibold uppercase tracking-wider text-red-500/80">High</span>
     </div>
     <p class="text-[13px] font-medium text-[var(--ui-text-highlighted)] mb-1.5">"{{ critique.claim }}"</p>
     <p class="text-[12px] text-[var(--ui-text-muted)] leading-relaxed">{{ critique.critique }}</p>
@@ -12,16 +12,14 @@
 <script setup lang="ts">
 import type { CritiqueNote } from '~/composables/useResearch'
 
-type BadgeColor = 'error' | 'warning' | 'info' | 'neutral'
-
 const props = defineProps<{ critique: CritiqueNote }>()
 
-const typeConfig: Record<string, { label: string; color: BadgeColor }> = {
-  objection: { label: 'Objection', color: 'error' },
-  contradiction: { label: 'Contradiction', color: 'warning' },
-  gap: { label: 'Gap', color: 'info' },
-  'weak-support': { label: 'Weak Support', color: 'warning' },
+const typeConfig: Record<string, { label: string; color: string }> = {
+  objection: { label: 'Objection', color: 'text-red-500/70' },
+  contradiction: { label: 'Contradiction', color: 'text-amber-500/70' },
+  gap: { label: 'Gap', color: 'text-blue-500/70' },
+  'weak-support': { label: 'Weak Support', color: 'text-amber-500/70' },
 }
 const typeLabel = computed(() => typeConfig[props.critique.type]?.label || props.critique.type)
-const typeColor = computed(() => typeConfig[props.critique.type]?.color || 'neutral')
+const typeTextColor = computed(() => typeConfig[props.critique.type]?.color || 'text-[var(--ui-text-muted)]')
 </script>

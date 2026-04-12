@@ -6,22 +6,21 @@
         v-if="showSessionRail"
         v-model:open="isLeftSidebarOpen"
         collapsible="offcanvas"
-        close
         side="left"
         :ui="leftSidebarUi"
         :style="{ '--sidebar-width': '18rem' }"
       >
         <template #header>
-          <div class="px-5 py-5 border-b border-[var(--ui-border)]">
-            <p class="text-xs font-medium text-[var(--ui-text-muted)] mb-4">Research Progress</p>
+          <div class="px-5 py-5 border-b border-[var(--ui-border)]/50">
+            <p class="text-xs font-medium text-[var(--ui-text-dimmed)] mb-4">Research Progress</p>
             <PhaseStepper :phase="resolvedSession.phase" />
           </div>
         </template>
 
         <template #default>
           <div class="flex min-h-0 flex-1 flex-col">
-            <div v-if="resolvedSession.plan && resolvedSession.phase !== 'plan-review'" class="p-5 border-b border-[var(--ui-border)] flex-shrink-0">
-              <p class="text-xs font-medium text-[var(--ui-text-muted)] mb-3">Topic Outline</p>
+            <div v-if="resolvedSession.plan && resolvedSession.phase !== 'plan-review'" class="p-5 border-b border-[var(--ui-border)]/50 flex-shrink-0">
+              <p class="text-xs font-medium text-[var(--ui-text-dimmed)] mb-3">Topic Outline</p>
               <div class="space-y-1">
                 <div
                   v-for="topic in resolvedSession.plan.topics"
@@ -29,9 +28,9 @@
                   class="flex items-start gap-3 py-1.5"
                 >
                   <span class="mt-0.5 shrink-0 text-xs">
-                    <span v-if="topic.status === 'done'" class="text-[var(--ui-text-muted)]">✓</span>
-                    <span v-else-if="topic.status === 'active'" class="text-[var(--ui-text)]">→</span>
-                    <span v-else class="text-[var(--ui-text-dimmed)]">○</span>
+                    <span v-if="topic.status === 'done'" class="text-[var(--ui-text-muted)]">&#10003;</span>
+                    <span v-else-if="topic.status === 'active'" class="text-[var(--ui-text)]">&rarr;</span>
+                    <span v-else class="text-[var(--ui-text-dimmed)]">&#9675;</span>
                   </span>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm" :class="topic.status === 'active' ? 'text-[var(--ui-text-highlighted)]' : 'text-[var(--ui-text)]'">{{ topic.title }}</p>
@@ -41,19 +40,19 @@
             </div>
 
             <div class="flex-1 p-5 min-h-0 overflow-y-auto">
-              <p class="text-xs font-medium text-[var(--ui-text-muted)] mb-4">Activity Stream</p>
+              <p class="text-xs font-medium text-[var(--ui-text-dimmed)] mb-4">Activity Stream</p>
               <div class="space-y-5 pb-4">
                 <div v-for="entry in allActivityEntries.slice(0, 30)" :key="entry.id" class="flex flex-col gap-1.5">
                   <div class="flex items-center justify-between gap-1.5">
                     <RoleBadge :role="entry.role" size="xs" />
                     <ClientOnly v-if="entry.timestamp">
-                      <span class="text-xs text-[var(--ui-text-muted)]">{{ formatLogTime(entry.timestamp) }}</span>
+                      <span class="text-xs text-[var(--ui-text-dimmed)]">{{ formatLogTime(entry.timestamp) }}</span>
                     </ClientOnly>
                   </div>
                   <p class="text-[13px] text-[var(--ui-text)] leading-relaxed">{{ entry.message }}</p>
                 </div>
                 <div v-if="!resolvedSession.progressLog.length" class="text-center py-6">
-                  <p class="text-sm text-[var(--ui-text-muted)]">Waiting for system logs...</p>
+                  <p class="text-sm text-[var(--ui-text-dimmed)]">Waiting for system logs...</p>
                 </div>
               </div>
             </div>
@@ -63,30 +62,30 @@
 
       <!-- Main Play Area -->
       <div class="relative flex-1 overflow-y-auto">
-        <div v-if="showSessionRail" class="pointer-events-none sticky top-4 left-0 z-20 h-0 px-4">
+        <div v-if="showSessionRail && !isLeftSidebarOpen" class="pointer-events-none sticky top-4 left-0 z-20 h-0 px-4">
           <div class="pointer-events-auto inline-flex">
             <UButton
-              :icon="isLeftSidebarOpen ? 'i-lucide-panel-left-close' : 'i-lucide-panel-left'"
+              icon="i-lucide-panel-left"
               color="neutral"
               variant="ghost"
               size="sm"
               class="bg-[var(--ui-bg)]/80 backdrop-blur-md"
-              :aria-label="isLeftSidebarOpen ? 'Collapse progress sidebar' : 'Expand progress sidebar'"
-              @click="isLeftSidebarOpen = !isLeftSidebarOpen"
+              aria-label="Expand progress sidebar"
+              @click="isLeftSidebarOpen = true"
             />
           </div>
         </div>
 
-        <div v-if="showRightRail" class="pointer-events-none sticky top-4 z-20 h-0 flex justify-end px-4">
+        <div v-if="showRightRail && !isRightSidebarOpen" class="pointer-events-none sticky top-4 z-20 h-0 flex justify-end px-4">
           <div class="pointer-events-auto inline-flex">
             <UButton
-              :icon="isRightSidebarOpen ? 'i-lucide-panel-right-close' : 'i-lucide-panel-right'"
+              icon="i-lucide-panel-right"
               color="neutral"
               variant="ghost"
               size="sm"
               class="bg-[var(--ui-bg)]/80 backdrop-blur-md"
-              :aria-label="isRightSidebarOpen ? 'Collapse artifacts sidebar' : 'Expand artifacts sidebar'"
-              @click="isRightSidebarOpen = !isRightSidebarOpen"
+              aria-label="Expand artifacts sidebar"
+              @click="isRightSidebarOpen = true"
             />
           </div>
         </div>
@@ -95,58 +94,58 @@
           <!-- Phase: Planning -->
           <template v-if="!resolvedSession.plan && resolvedSession.phase === 'planning'">
             <div class="mb-10 mt-6">
-              <p class="text-sm font-medium text-[var(--ui-text-muted)] mb-3">Initializing Objective...</p>
+              <p class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)] mb-3">Initializing Objective...</p>
               <h2 class="text-[28px] leading-tight font-serif text-[var(--ui-text-highlighted)]">{{ resolvedSession.question }}</h2>
             </div>
-            
+
             <div class="space-y-4">
-              <div class="h-3 bg-[var(--ui-border)] rounded-sm w-full opacity-30" />
-              <div class="h-3 bg-[var(--ui-border)] rounded-sm w-11/12 opacity-30" />
-              <div class="h-3 bg-[var(--ui-border)] rounded-sm w-4/5 opacity-30" />
-              <div class="h-3 bg-[var(--ui-border)] rounded-sm w-full opacity-30" />
-              <div class="h-3 bg-[var(--ui-border)] rounded-sm w-3/4 opacity-30" />
+              <div class="h-3 rounded-sm w-full shimmer" />
+              <div class="h-3 rounded-sm w-11/12 shimmer" />
+              <div class="h-3 rounded-sm w-4/5 shimmer" />
+              <div class="h-3 rounded-sm w-full shimmer" />
+              <div class="h-3 rounded-sm w-3/4 shimmer" />
             </div>
           </template>
 
           <!-- Phase: Plan Review -->
           <template v-else-if="resolvedSession.phase === 'plan-review'">
             <div class="mb-10 mt-6">
-              <p class="text-sm font-medium text-[var(--ui-text-muted)] mb-3">Proposed Research Layout</p>
+              <p class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)] mb-3">Proposed Research Layout</p>
               <h1 class="text-[28px] leading-tight font-serif text-[var(--ui-text-highlighted)] max-w-3xl">{{ resolvedSession.question }}</h1>
             </div>
-            
-            <div class="space-y-6 mb-10">
+
+            <div class="space-y-0 mb-12">
               <div
                 v-for="(topic, index) in resolvedSession.plan?.topics"
                 :key="topic.id"
-                class="py-4 border-b border-[var(--ui-border)] last:border-0"
+                class="py-5 first:pt-0 group"
               >
-                <div class="flex items-start gap-4">
-                  <span class="text-sm text-[var(--ui-text-muted)] mt-0.5 w-6">{{ index + 1 }}.</span>
+                <div class="flex items-start gap-4 pl-5 border-l-2 border-transparent group-hover:border-[var(--ui-primary)]/30 transition-colors">
+                  <span class="text-lg font-serif text-[var(--ui-text-dimmed)]/40 mt-0.5 w-6 shrink-0">{{ index + 1 }}</span>
                   <div class="flex-1">
                     <h3 class="text-[15px] font-medium text-[var(--ui-text-highlighted)]">{{ topic.title }}</h3>
                     <div class="flex flex-col gap-1.5 mt-3">
                       <span
                         v-for="query in topic.queries"
                         :key="query"
-                        class="text-sm text-[var(--ui-text-muted)] flex items-center before:content-[''] before:w-1 before:h-1 before:rounded-full before:bg-[var(--ui-border)] before:mr-3"
-                      >{{ query }}</span>
+                        class="text-sm text-[var(--ui-text-muted)] flex items-center gap-2"
+                      ><span class="text-[var(--ui-text-dimmed)]/30">—</span> {{ query }}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            
+
             <div class="flex gap-3">
               <UButton
                 :label="isApprovingPlan ? 'Executing Plan...' : 'Approve Plan'"
-                color="black"
+                color="primary"
                 size="md"
                 :loading="isApprovingPlan"
                 :disabled="isApprovingPlan"
                 @click="handleApprove"
               />
-              <UButton label="Edit Directions" variant="ghost" color="neutral" size="md" :disabled="isApprovingPlan" />
+              <UButton label="Edit Directions" variant="outline" color="neutral" size="md" :disabled="isApprovingPlan" />
             </div>
           </template>
 
@@ -154,17 +153,17 @@
           <template v-else-if="isFocusPhase">
             <div class="space-y-12">
               <section class="space-y-4 mt-6">
-                <p class="text-sm font-medium text-[var(--ui-text-muted)]">{{ phaseLabel }}</p>
+                <p class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)]">{{ phaseLabel }}</p>
                 <h2 class="text-[28px] leading-tight font-serif text-[var(--ui-text-highlighted)] max-w-3xl">{{ resolvedSession.question }}</h2>
                 <p class="text-[15px] text-[var(--ui-text-muted)] leading-relaxed max-w-3xl">{{ activeHeaderCopy }}</p>
               </section>
 
-              <section class="py-6 border-y border-[var(--ui-border)]">
+              <section class="py-8">
                 <div class="flex flex-col gap-2">
                   <div class="flex items-center gap-3 mb-1">
-                    <span class="text-xs font-medium text-[var(--ui-text-muted)]">{{ activeStateEyebrow }}</span>
-                    <span class="text-xs text-[var(--ui-text-dimmed)]">•</span>
-                    <span class="text-xs font-medium text-[var(--ui-text-muted)]">{{ activeBadgeCopy }}</span>
+                    <span class="text-[11px] tracking-wide uppercase text-[var(--ui-text-dimmed)]">{{ activeStateEyebrow }}</span>
+                    <span class="text-[11px] text-[var(--ui-text-dimmed)]/40">·</span>
+                    <span class="text-[11px] tracking-wide uppercase text-[var(--ui-text-dimmed)]">{{ activeBadgeCopy }}</span>
                   </div>
                   <h3 class="text-xl font-serif text-[var(--ui-text-highlighted)]">{{ activeStateTitle }}</h3>
                   <p class="max-w-3xl text-sm leading-relaxed text-[var(--ui-text)] mt-1">{{ activeStateSummary }}</p>
@@ -174,29 +173,29 @@
                   <span
                     v-for="query in activeTopic.queries"
                     :key="query"
-                    class="text-xs text-[var(--ui-text-muted)] bg-[var(--ui-bg)] border border-[var(--ui-border)] px-3 py-1.5 rounded-md shadow-sm"
+                    class="text-xs text-[var(--ui-text-muted)] bg-[var(--ui-bg-elevated)]/60 px-3 py-1.5 rounded-full backdrop-blur-sm"
                   >{{ query }}</span>
                 </div>
               </section>
 
-              <section class="grid gap-8 sm:grid-cols-3">
+              <section class="grid gap-8 sm:grid-cols-3 py-8 border-t border-[var(--ui-border)]/30">
                 <div
                   v-for="metric in activeMetrics"
                   :key="metric.label"
                   class="flex flex-col"
                 >
-                  <p class="text-xs font-medium text-[var(--ui-text-muted)]">{{ metric.label }}</p>
-                  <p class="mt-1 text-2xl font-serif text-[var(--ui-text-highlighted)]">{{ metric.value }}</p>
-                  <p class="mt-2 text-[13px] leading-relaxed text-[var(--ui-text-muted)] max-w-[200px]">{{ metric.helper }}</p>
+                  <p class="text-[11px] uppercase tracking-widest text-[var(--ui-text-dimmed)]">{{ metric.label }}</p>
+                  <p class="mt-1 text-3xl font-serif font-light text-[var(--ui-text-highlighted)]">{{ metric.value }}</p>
+                  <p class="mt-2 text-[13px] leading-relaxed text-[var(--ui-text-dimmed)] max-w-[200px]">{{ metric.helper }}</p>
                 </div>
               </section>
 
-              <details v-if="resolvedSession.plan" class="group border-y border-[var(--ui-border)]">
+              <details v-if="resolvedSession.plan" class="group border-t border-[var(--ui-border)]/30">
                 <summary class="cursor-pointer list-none py-5 flex items-center justify-between gap-3 focus:outline-none">
                   <p class="text-[15px] font-medium text-[var(--ui-text-highlighted)]">View Original Plan</p>
                   <UIcon
                     name="i-lucide-chevron-down"
-                    class="text-[var(--ui-text-muted)] transition-transform duration-200 group-open:rotate-180"
+                    class="text-[var(--ui-text-dimmed)] transition-transform duration-200 group-open:rotate-180"
                   />
                 </summary>
                 <div class="pb-6 grid gap-2 pt-2">
@@ -206,12 +205,12 @@
                     class="py-2"
                   >
                     <div class="flex items-start gap-4">
-                      <span class="text-sm text-[var(--ui-text-muted)] w-6">{{ index + 1 }}.</span>
+                      <span class="text-sm text-[var(--ui-text-dimmed)] w-6">{{ index + 1 }}.</span>
                       <div class="flex-1">
                         <div class="flex flex-col gap-1">
                           <h4 class="text-sm font-medium text-[var(--ui-text-highlighted)]">{{ topic.title }}</h4>
-                          <span class="text-xs text-[var(--ui-text-muted)] flex items-center gap-2">
-                            <span :class="topic.status === 'done' ? 'text-[var(--ui-text)]' : 'text-[var(--ui-text-dimmed)]'">{{ topic.status === 'done' ? 'Completed' : topic.status === 'active' ? 'Active' : 'Pending' }}</span>
+                          <span class="text-xs text-[var(--ui-text-dimmed)]">
+                            <span>{{ topic.status === 'done' ? 'Completed' : topic.status === 'active' ? 'Active' : 'Pending' }}</span>
                           </span>
                         </div>
                       </div>
@@ -224,7 +223,7 @@
                 <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 class="text-[15px] font-medium text-[var(--ui-text-highlighted)]">{{ activityTimelineTitle }}</h3>
-                    <p class="mt-1 text-[13px] text-[var(--ui-text-muted)]">{{ activityTimelineCopy }}</p>
+                    <p class="mt-1 text-[13px] text-[var(--ui-text-dimmed)]">{{ activityTimelineCopy }}</p>
                   </div>
                   <UButton
                     v-if="canToggleActivityScope"
@@ -237,7 +236,7 @@
                   />
                 </div>
 
-                <div class="space-y-6">
+                <div class="space-y-5">
                   <div
                     v-for="entry in displayedActivityEntries"
                     :key="entry.id"
@@ -247,12 +246,12 @@
                     <div class="flex-1 space-y-1">
                       <div class="flex items-start justify-between gap-4">
                         <span class="text-[14px] text-[var(--ui-text)] leading-relaxed">{{ entry.message }}</span>
-                        <span class="text-xs text-[var(--ui-text-muted)] shrink-0 mt-0.5">{{ formatLogTime(entry.timestamp) }}</span>
+                        <span class="text-[11px] text-[var(--ui-text-dimmed)] shrink-0 mt-0.5">{{ formatLogTime(entry.timestamp) }}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div v-if="displayedActivityEntries.length === 0" class="py-8 text-[var(--ui-text-muted)] text-[14px]">
+                  <div v-if="displayedActivityEntries.length === 0" class="py-8 text-[var(--ui-text-dimmed)] text-[14px]">
                     Waiting for agent milestones...
                   </div>
                 </div>
@@ -272,13 +271,12 @@
         v-model:open="isRightSidebarOpen"
         side="right"
         collapsible="offcanvas"
-        close
         :ui="rightSidebarUi"
         :style="{ '--sidebar-width': '22rem' }"
       >
         <template #header>
-          <div class="px-5 py-5 border-b border-[var(--ui-border)]">
-            <p class="text-xs font-medium text-[var(--ui-text-muted)]">Research Artifacts</p>
+          <div class="px-5 py-5 border-b border-[var(--ui-border)]/50">
+            <p class="text-xs font-medium text-[var(--ui-text-dimmed)]">Research Artifacts</p>
           </div>
         </template>
 
@@ -290,20 +288,20 @@
             :ui="{ trigger: 'text-[13px] font-medium', content: 'flex-1 overflow-y-auto min-h-0' }"
           >
             <template #evidence>
-              <div class="p-3 space-y-4">
-                <p v-if="!resolvedSession?.evidence?.length" class="text-sm text-[var(--ui-text-muted)] text-center py-8">No evidence collected</p>
+              <div class="p-3 space-y-0">
+                <p v-if="!resolvedSession?.evidence?.length" class="text-sm text-[var(--ui-text-dimmed)] text-center py-8">No evidence collected</p>
                 <EvidenceCardComponent v-for="ev in resolvedSession?.evidence" :key="ev.id" :evidence="ev" />
               </div>
             </template>
             <template #critique>
-              <div class="p-3 space-y-4">
-                <p v-if="!resolvedSession?.critiques?.length" class="text-sm text-[var(--ui-text-muted)] text-center py-8">No critiques</p>
+              <div class="p-3 space-y-0">
+                <p v-if="!resolvedSession?.critiques?.length" class="text-sm text-[var(--ui-text-dimmed)] text-center py-8">No critiques</p>
                 <CritiqueCard v-for="critique in resolvedSession?.critiques" :key="critique.id" :critique="critique" />
               </div>
             </template>
             <template #contested>
-              <div class="p-3 space-y-4">
-                <p v-if="!resolvedSession?.contested?.length" class="text-sm text-[var(--ui-text-muted)] text-center py-8">No contested points</p>
+              <div class="p-3 space-y-0">
+                <p v-if="!resolvedSession?.contested?.length" class="text-sm text-[var(--ui-text-dimmed)] text-center py-8">No contested points</p>
                 <ContestedCard v-for="cp in resolvedSession?.contested" :key="cp.id" :contested="cp" />
               </div>
             </template>
@@ -315,7 +313,7 @@
 
   <div v-else class="h-full flex flex-col items-center justify-center bg-[var(--ui-bg)]">
     <h2 class="text-xl font-serif text-[var(--ui-text-highlighted)] mb-2">Session Not Found</h2>
-    <p class="text-sm text-[var(--ui-text-muted)] mb-6">This research session doesn't exist or was deleted.</p>
+    <p class="text-sm text-[var(--ui-text-dimmed)] mb-6">This research session doesn't exist or was deleted.</p>
     <UButton label="Back to Home" to="/" variant="ghost" color="neutral" />
   </div>
 </template>

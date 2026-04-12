@@ -1,108 +1,76 @@
 <template>
-  <div class="space-y-8">
-    <section class="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] p-4 shadow-sm">
-      <PhaseStepper phase="complete" layout="horizontal" />
-    </section>
-
-    <section>
-      <div class="mb-4 flex flex-wrap items-center gap-2">
-        <UBadge label="Complete" color="success" variant="subtle" size="sm" class="drop-shadow-sm font-medium" />
-        <UBadge :label="`${session.evidence.length} sources`" color="neutral" variant="subtle" size="sm" class="drop-shadow-sm font-medium" />
-        <UBadge :label="`${session.critiques.length} objections`" color="neutral" variant="subtle" size="sm" class="drop-shadow-sm font-medium" />
-      </div>
-      <h2 class="text-3xl font-bold tracking-tight text-[var(--ui-text-highlighted)] leading-tight mb-3 drop-shadow-sm">{{ session.question }}</h2>
-      <p class="text-[14px] text-[var(--ui-text-muted)] tracking-wide">
-        Completed {{ formatDate(session.completedAt!) }} · {{ duration }} research time
+  <div class="space-y-0">
+    <!-- Header -->
+    <section class="pb-6 border-b border-[var(--ui-border)]/40">
+      <h2 class="text-3xl font-serif font-normal tracking-tight text-[var(--ui-text-highlighted)] leading-tight mb-3">{{ session.question }}</h2>
+      <p class="text-sm text-[var(--ui-text-muted)]">
+        Completed {{ formatDate(session.completedAt!) }} · {{ duration }} · {{ session.evidence.length }} sources · {{ session.critiques.length }} objections
       </p>
     </section>
 
-    <section class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-      <div class="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] p-5">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-[12px] font-medium text-[var(--ui-text-muted)]">Confidence Level</span>
-          <span class="text-sm font-semibold" :class="confidenceColor">{{ session.confidenceLevel }}%</span>
+    <!-- Confidence + Stats -->
+    <section class="py-8 border-b border-[var(--ui-border)]/40">
+      <div class="flex items-baseline gap-8 flex-wrap">
+        <div class="flex items-baseline gap-2">
+          <span class="text-4xl font-serif font-light tracking-tight" :class="confidenceColor">{{ session.confidenceLevel }}%</span>
+          <span class="text-sm text-[var(--ui-text-dimmed)]">confidence</span>
         </div>
-        <div class="w-full h-2 rounded-full bg-[var(--ui-bg-accented)] overflow-hidden">
-          <div class="h-full rounded-full transition-all duration-1000 ease-out" :class="confidenceBg" :style="{ width: `${session.confidenceLevel}%` }" />
-        </div>
-        <div class="flex justify-between mt-1.5 text-[10px] text-[var(--ui-text-dimmed)]">
-          <span>Low confidence</span>
-          <span>High confidence</span>
-        </div>
-        <p class="mt-4 text-[12px] leading-relaxed text-[var(--ui-text-muted)]">
-          The final recommendation is calibrated from collected evidence, skeptic review, and unresolved open questions.
-        </p>
-      </div>
-
-      <div class="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] p-5">
-        <div class="mb-4">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--ui-text-dimmed)]">Research Snapshot</p>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div v-for="stat in snapshotStats" :key="stat.label" class="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-bg)] px-3 py-3">
-            <p class="text-[11px] uppercase tracking-[0.18em] text-[var(--ui-text-dimmed)]">{{ stat.label }}</p>
-            <p class="mt-2 text-xl font-semibold tracking-tight text-[var(--ui-text-highlighted)]">{{ stat.value }}</p>
-            <p class="mt-1 text-[11px] leading-relaxed text-[var(--ui-text-muted)]">{{ stat.helper }}</p>
+        <div class="flex gap-8">
+          <div v-for="stat in snapshotStats" :key="stat.label">
+            <p class="text-2xl font-serif font-light text-[var(--ui-text-highlighted)]">{{ stat.value }}</p>
+            <p class="text-[11px] text-[var(--ui-text-dimmed)] mt-0.5">{{ stat.label }}</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] p-6">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)]">Executive Summary</h3>
-        <span class="text-[11px] uppercase tracking-[0.2em] text-[var(--ui-text-dimmed)]">Summary</span>
-      </div>
-      <p class="text-sm text-[var(--ui-text)] leading-relaxed whitespace-pre-line">{{ session.summary }}</p>
+    <!-- Executive Summary -->
+    <section class="py-8 border-b border-[var(--ui-border)]/40">
+      <h3 class="text-lg font-serif font-normal text-[var(--ui-text-highlighted)] mb-4">Executive Summary</h3>
+      <p class="text-[15px] text-[var(--ui-text)] leading-[1.75] whitespace-pre-line">{{ session.summary }}</p>
     </section>
 
-    <section class="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] p-6">
-      <div class="mb-3 flex items-center justify-between gap-3">
-        <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)]">Final Recommendation</h3>
-        <span class="text-[11px] uppercase tracking-[0.2em] text-[var(--ui-text-dimmed)]">Decision</span>
+    <!-- Final Recommendation -->
+    <section class="py-8 border-b border-[var(--ui-border)]/40">
+      <div class="pl-5 border-l-2 border-[var(--ui-primary)]/30">
+        <h3 class="text-lg font-serif font-normal text-[var(--ui-text-highlighted)] mb-4">Final Recommendation</h3>
+        <div class="text-[15px] text-[var(--ui-text)] leading-[1.75] whitespace-pre-line">{{ session.finalAnswer }}</div>
       </div>
-      <div class="text-sm text-[var(--ui-text)] leading-relaxed whitespace-pre-line">{{ session.finalAnswer }}</div>
     </section>
 
-    <section v-if="session.openQuestions.length" class="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] p-6">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)]">Open Questions</h3>
-        <span class="text-[11px] uppercase tracking-[0.2em] text-[var(--ui-text-dimmed)]">{{ session.openQuestions.length }} remaining</span>
-      </div>
-      <ul class="space-y-2">
-        <li v-for="(question, index) in session.openQuestions" :key="index" class="flex items-start gap-2 text-sm text-[var(--ui-text)]">
-          <span class="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--ui-primary)] shrink-0" />
+    <!-- Open Questions -->
+    <section v-if="session.openQuestions.length" class="py-8 border-b border-[var(--ui-border)]/40">
+      <h3 class="text-lg font-serif font-normal text-[var(--ui-text-highlighted)] mb-4">Open Questions</h3>
+      <ul class="space-y-2.5">
+        <li v-for="(question, index) in session.openQuestions" :key="index" class="flex items-start gap-3 text-[15px] text-[var(--ui-text)]">
+          <span class="text-[var(--ui-text-dimmed)]/40 shrink-0 select-none">—</span>
           <span class="leading-relaxed">{{ question }}</span>
         </li>
       </ul>
     </section>
 
-    <section v-if="majorProgressEntries.length" class="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-bg-elevated)] p-6">
-      <div class="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h3 class="text-sm font-semibold text-[var(--ui-text-highlighted)]">How Research Progressed</h3>
-          <p class="mt-1 text-[12px] text-[var(--ui-text-muted)]">A compact timeline of the major research milestones.</p>
-        </div>
-      </div>
+    <!-- Research Timeline -->
+    <section v-if="majorProgressEntries.length" class="py-8 border-b border-[var(--ui-border)]/40">
+      <h3 class="text-lg font-serif font-normal text-[var(--ui-text-highlighted)] mb-1">How Research Progressed</h3>
+      <p class="text-[13px] text-[var(--ui-text-dimmed)] mb-6">Key milestones from the research process.</p>
 
-      <div class="space-y-3">
+      <div class="space-y-0">
         <div
           v-for="entry in majorProgressEntries"
           :key="entry.id"
-          class="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-bg)] px-4 py-3"
+          class="flex items-start gap-4 py-3 border-b border-[var(--ui-border)]/20 last:border-0"
         >
-          <div class="mb-1.5 flex items-center justify-between gap-3">
-            <RoleBadge :role="entry.role" size="xs" />
-            <span class="text-[11px] font-medium text-[var(--ui-text-muted)]">{{ formatLogTime(entry.timestamp) }}</span>
-          </div>
+          <span class="text-[11px] font-medium text-[var(--ui-text-dimmed)] shrink-0 w-16 mt-0.5">{{ formatLogTime(entry.timestamp) }}</span>
+          <RoleBadge :role="entry.role" size="xs" class="shrink-0 mt-0.5" />
           <p class="text-[13px] leading-relaxed text-[var(--ui-text)]">{{ entry.message }}</p>
         </div>
       </div>
     </section>
 
-    <div class="flex items-center gap-2 pt-4 border-t border-[var(--ui-border)]">
+    <!-- Actions -->
+    <div class="flex items-center gap-2 pt-8">
       <UButton label="Export Memo" icon="i-lucide-download" variant="outline" color="neutral" size="sm" />
-      <UButton label="Follow Up" icon="i-lucide-message-circle" variant="soft" size="sm" />
+      <UButton label="Follow Up" icon="i-lucide-message-circle" variant="ghost" color="neutral" size="sm" />
       <UButton label="New Research" icon="i-lucide-plus" variant="ghost" color="neutral" size="sm" to="/" />
     </div>
   </div>
@@ -115,12 +83,7 @@ const props = defineProps<{ session: ResearchSession }>()
 
 const confidenceColor = computed(() => {
   const c = props.session.confidenceLevel
-  return c >= 70 ? 'text-emerald-600' : c >= 50 ? 'text-amber-600' : 'text-red-600'
-})
-
-const confidenceBg = computed(() => {
-  const c = props.session.confidenceLevel
-  return c >= 70 ? 'bg-emerald-500' : c >= 50 ? 'bg-amber-500' : 'bg-red-500'
+  return c >= 70 ? 'text-emerald-500' : c >= 50 ? 'text-amber-500' : 'text-red-500'
 })
 
 const duration = computed(() => {
@@ -130,26 +93,10 @@ const duration = computed(() => {
 })
 
 const snapshotStats = computed(() => ([
-  {
-    label: 'Topics Covered',
-    value: props.session.plan?.topics.length ?? 0,
-    helper: 'Approved topics completed in the session.',
-  },
-  {
-    label: 'Sources Reviewed',
-    value: props.session.evidence.length,
-    helper: 'Evidence cards captured during research.',
-  },
-  {
-    label: 'Objections Found',
-    value: props.session.critiques.length,
-    helper: 'Skeptic challenges surfaced before synthesis.',
-  },
-  {
-    label: 'Open Questions',
-    value: props.session.openQuestions.length,
-    helper: 'Follow-up gaps left for the next pass.',
-  },
+  { label: 'Topics', value: props.session.plan?.topics.length ?? 0 },
+  { label: 'Sources', value: props.session.evidence.length },
+  { label: 'Objections', value: props.session.critiques.length },
+  { label: 'Open', value: props.session.openQuestions.length },
 ]))
 
 const majorProgressEntries = computed(() => {
