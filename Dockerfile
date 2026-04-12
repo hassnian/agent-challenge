@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3 \
   make \
   g++ \
-  git \
   && rm -rf /var/lib/apt/lists/*
 
 # Disable telemetry
@@ -20,6 +19,7 @@ ENV ELIZAOS_TELEMETRY_DISABLED=true
 ENV DO_NOT_TRACK=1
 ENV NODE_ENV=production
 ENV SERVER_PORT=3000
+ENV PGLITE_DATA_DIR=/app/.eliza/.elizadb
 
 WORKDIR /app
 

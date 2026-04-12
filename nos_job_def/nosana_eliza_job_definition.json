@@ -1,24 +1,35 @@
 {
+  "version": "0.1",
+  "type": "container",
+  "meta": {
+    "trigger": "api",
+    "system_resources": {
+      "required_vram": 16
+    }
+  },
   "ops": [
     {
       "id": "agent",
+      "type": "container/run",
       "args": {
-        "image": "yourusername/nosana-eliza-agent:latest",
+        "image": "hassnian/nosana-eliza-agent:latest",
+        "cmd": ["/bin/sh", "-c", "/app/scripts/start-nosana-container.sh"],
+        "gpu": true,
         "expose": 3000,
         "env": {
-          "OPENAI_API_KEY": "nosana",
-          "OPENAI_BASE_URL": "https://5i8frj7ann99bbw9gzpprvzj2esugg39hxbb4unypskq.node.k8s.prd.nos.ci/v1/models",
-          "OPENAI_SMALL_MODEL": "Qwen3.5-9B-FP8",
-          "OPENAI_LARGE_MODEL": "Qwen3.5-9B-FP8",
+          "ENABLE_OLLAMA": "true",
+          "OLLAMA_MODEL": "qwen2.5:7b-instruct",
+          "OPENAI_API_KEY": "ollama",
+          "OPENAI_BASE_URL": "http://127.0.0.1:11434/v1",
+          "OPENAI_SMALL_MODEL": "qwen2.5:7b-instruct",
+          "OPENAI_LARGE_MODEL": "qwen2.5:7b-instruct",
           "SERVER_PORT": "3000",
           "NODE_ENV": "production"
         }
       },
       "execution": {
         "group": "run"
-      },
-      "type": "container/run"
+      }
     }
-  ],
-  "version": "0.1"
+  ]
 }
