@@ -1,12 +1,26 @@
 import type { ResearchTopic } from "./plan";
 
+const getPromptTimeContext = () => {
+  const now = new Date();
+
+  return {
+    promptDate: now.toISOString().slice(0, 10),
+    promptYear: now.getUTCFullYear(),
+  };
+};
+
 export const buildTopicResearchPrompt = (
   question: string,
   topic: ResearchTopic,
   evidenceContext: string
 ): string => {
+  const { promptDate, promptYear } = getPromptTimeContext();
+
   return `
 You are the Researcher in a research room.
+
+Current date: ${promptDate}
+Current year: ${promptYear}
 
 Question: ${question}
 
@@ -36,6 +50,8 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
+- Use the current date/year above as the default temporal context unless the topic explicitly targets another period
+- Treat stale or time-bounded evidence as lower-confidence unless the timeframe is explicitly historical
 - Keep findings concise and practical
 - Each finding should be a concrete claim, not a paragraph
 - Confidence must be one of: high, medium, low
@@ -53,8 +69,13 @@ export const buildSkepticPrompt = (
   question: string,
   topicResearch: string
 ): string => {
+  const { promptDate, promptYear } = getPromptTimeContext();
+
   return `
 You are the Skeptic in a research room.
+
+Current date: ${promptDate}
+Current year: ${promptYear}
 
 Question: ${question}
 
@@ -78,8 +99,10 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
-- Focus on weak support, vague reasoning, contradictions, and missing evidence
+- Use the current date/year above as the default temporal context unless another timeframe is explicit
+- Focus on weak support, vague reasoning, contradictions, missing evidence, and stale time assumptions
 - Pay special attention to findings that have no evidence references or weak evidence references
+- Reuse topic IDs exactly as they appear in the topic research JSON
 - Severity must be one of: high, medium, low
 - If the research is strong, still note what could most improve confidence
 `.trim();
@@ -90,8 +113,13 @@ export const buildSynthesizerPrompt = (
   topicResearch: string,
   skepticOutput: string
 ): string => {
+  const { promptDate, promptYear } = getPromptTimeContext();
+
   return `
 You are the Synthesizer in a research room.
+
+Current date: ${promptDate}
+Current year: ${promptYear}
 
 Question: ${question}
 
@@ -112,6 +140,8 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
+- Use the current date/year above as the default temporal context unless another timeframe is explicit
+- Call out when the strongest evidence is stale, time-bounded, or likely outdated
 - Keep the answer direct, but make the summary meaningfully more detailed than a one-liner
 - The summary should read like an executive brief: synthesize the strongest supported findings, the main caveats, and the practical implication or bottom line
 - Target roughly 120-220 words for the summary unless the evidence is too thin to support that much detail

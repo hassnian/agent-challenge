@@ -2,6 +2,15 @@ import { stripJsonCodeFences } from "./json";
 import { createDefaultResearchPlan, type ResearchPlanData, type ResearchTopic, type ResearchTopicPriority } from "./plan";
 import type { ResearchSessionData } from "./session";
 
+const getPromptTimeContext = () => {
+  const now = new Date();
+
+  return {
+    promptDate: now.toISOString().slice(0, 10),
+    promptYear: now.getUTCFullYear(),
+  };
+};
+
 export const getNonEmptyString = (value: unknown): string | null => {
   if (typeof value === "string" && value.trim().length > 0) {
     return value.trim();
@@ -23,9 +32,14 @@ export const getNonEmptyString = (value: unknown): string | null => {
 };
 
 export const buildPlannerPrompt = (question: string): string => {
+  const { promptDate, promptYear } = getPromptTimeContext();
+
   return `
 You are the Planner in a research room.
 Build a plan the user can inspect and act on, not a generic blog outline.
+
+Current date: ${promptDate}
+Current year: ${promptYear}
 
 Question: ${question}
 
@@ -49,6 +63,10 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
+- Use the current date/year above as the default temporal context unless the user explicitly asks about another period
+- If the user does not specify a timeframe, prefer current-year or evergreen queries over stale year-specific queries
+- For fast-moving topics like jobs, markets, regulations, events, or software releases, include the current year or terms like "current" or "latest" when useful
+- Do not anchor queries to past years unless the user explicitly wants historical analysis
 - Generate 3 to 5 main topics
 - Topics must be concrete, researchable, and non-overlapping
 - Topics should be framed as decision-useful workstreams, not generic blog categories
@@ -71,9 +89,14 @@ export const buildPlanUpdatePrompt = (
   currentPlan: ResearchPlanData,
   instruction: string
 ): string => {
+  const { promptDate, promptYear } = getPromptTimeContext();
+
   return `
 You are the Planner in a research room.
 Update the plan so it stays sharp, inspectable, and directly useful for research.
+
+Current date: ${promptDate}
+Current year: ${promptYear}
 
 Current plan:
 ${JSON.stringify(currentPlan, null, 2)}
@@ -101,6 +124,10 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
+- Use the current date/year above as the default temporal context unless the user explicitly asks about another period
+- If the user does not specify a timeframe, prefer current-year or evergreen queries over stale year-specific queries
+- For fast-moving topics like jobs, markets, regulations, events, or software releases, include the current year or terms like "current" or "latest" when useful
+- Do not anchor queries to past years unless the user explicitly wants historical analysis
 - Apply the user's requested changes to the current plan
 - Keep only the parts of the current plan that still fit the updated scope
 - Generate 3 to 5 main topics
@@ -124,9 +151,14 @@ export const buildFollowUpPlanPrompt = (
   session: ResearchSessionData,
   instruction: string
 ): string => {
+  const { promptDate, promptYear } = getPromptTimeContext();
+
   return `
 You are the Planner in a research room.
 Build a follow-up research plan that extends a prior completed session instead of repeating it.
+
+Current date: ${promptDate}
+Current year: ${promptYear}
 
 Previous session question: ${session.question}
 Previous direct answer: ${session.answer}
@@ -158,6 +190,10 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
+- Use the current date/year above as the default temporal context unless the user explicitly asks about another period
+- If the user does not specify a timeframe, prefer current-year or evergreen queries over stale year-specific queries
+- For fast-moving topics like jobs, markets, regulations, events, or software releases, include the current year or terms like "current" or "latest" when useful
+- Do not anchor queries to past years unless the user explicitly wants historical analysis
 - Treat this as a continuation of the saved session, not a fresh plan from zero
 - Focus on unresolved questions, contested claims, missing evidence, or the user's newly requested angle
 - Avoid spending topics on points that are already settled unless the user explicitly wants to reopen them
