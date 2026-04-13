@@ -10,11 +10,8 @@ import {
   type State,
 } from "@elizaos/core";
 import { createDefaultResearchPlan, createResearchPlan } from "../lib/plan";
-import {
-  buildPlanUpdatePrompt,
-  getNonEmptyString,
-  parsePlanResponse,
-} from "../lib/planner";
+import { buildPlanUpdatePrompt, parsePlanResponse } from "../lib/planner";
+import { generateStructuredText } from "../lib/structured-model";
 import { resolveResearchMessageContext } from "../lib/message-context";
 import { getLatestResearchPlan, saveResearchPlan } from "../lib/plan-store";
 import { saveResearchState } from "../lib/research-state-store";
@@ -62,12 +59,16 @@ export const updateResearchPlanAction: Action = {
     let updatedPlan = createDefaultResearchPlan(latestPlan.question);
 
     try {
-      const plannerResponse = await runtime.useModel(ModelType.TEXT_LARGE, {
-        prompt: buildPlanUpdatePrompt(latestPlan, instruction),
-        temperature: 0.3,
-      });
+      const plannerText = await generateStructuredText(
+        runtime,
+        ModelType.TEXT_LARGE,
+        buildPlanUpdatePrompt(latestPlan, instruction),
+        {
+          temperature: 0.3,
+          maxTokens: 2400,
+        }
+      );
 
-      const plannerText = getNonEmptyString(plannerResponse);
       if (plannerText) {
         const parsedPlan = parsePlanResponse(latestPlan.question, plannerText);
 

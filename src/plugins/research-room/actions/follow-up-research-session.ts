@@ -9,11 +9,8 @@ import {
   ModelType,
   type State,
 } from "@elizaos/core";
-import {
-  buildFollowUpPlanPrompt,
-  getNonEmptyString,
-  parsePlanResponse,
-} from "../lib/planner";
+import { buildFollowUpPlanPrompt, parsePlanResponse } from "../lib/planner";
+import { generateStructuredText } from "../lib/structured-model";
 import { createDefaultResearchPlan, createResearchPlan } from "../lib/plan";
 import { resolveResearchMessageContext } from "../lib/message-context";
 import { queueResearchSessionTask } from "../lib/research-task";
@@ -88,12 +85,16 @@ export const followUpResearchSessionAction: Action = {
     let plan = createDefaultResearchPlan(fallbackQuestion);
 
     try {
-      const plannerResponse = await runtime.useModel(ModelType.TEXT_LARGE, {
-        prompt: buildFollowUpPlanPrompt(sourceSession.data, instruction),
-        temperature: 0.3,
-      });
+      const plannerText = await generateStructuredText(
+        runtime,
+        ModelType.TEXT_LARGE,
+        buildFollowUpPlanPrompt(sourceSession.data, instruction),
+        {
+          temperature: 0.3,
+          maxTokens: 2400,
+        }
+      );
 
-      const plannerText = getNonEmptyString(plannerResponse);
       if (plannerText) {
         const parsedPlan = parsePlanResponse(fallbackQuestion, plannerText);
         if (parsedPlan) {

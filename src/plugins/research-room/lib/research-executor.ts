@@ -4,6 +4,7 @@ import {
   buildSynthesizerPrompt,
   buildTopicResearchPrompt,
 } from "./prompts";
+import { generateStructuredText } from "./structured-model";
 import { stripJsonCodeFences } from "./json";
 import { type ResearchTopic, type ResearchPlanData } from "./plan";
 import {
@@ -112,26 +113,6 @@ const getApiKey = (runtime: IAgentRuntime, key: string): string | null => {
   return typeof setting === "string" && setting.trim().length > 0
     ? setting.trim()
     : null;
-};
-
-const getNonEmptyString = (value: unknown): string | null => {
-  if (typeof value === "string" && value.trim().length > 0) {
-    return value.trim();
-  }
-
-  if (typeof value !== "object" || value === null) {
-    return null;
-  }
-
-  const candidateFields = ["text", "content", "response", "output"];
-  for (const field of candidateFields) {
-    const candidate = (value as Record<string, unknown>)[field];
-    if (typeof candidate === "string" && candidate.trim().length > 0) {
-      return candidate.trim();
-    }
-  }
-
-  return null;
 };
 
 const isConfidence = (value: unknown): value is ResearchConfidence => {
@@ -661,16 +642,20 @@ export const executeResearchSession = async (
     }
 
     try {
-      const topicResponse = await runtime.useModel(ModelType.TEXT_LARGE, {
-        prompt: buildTopicResearchPrompt(
+      const topicText = await generateStructuredText(
+        runtime,
+        ModelType.TEXT_LARGE,
+        buildTopicResearchPrompt(
           questionFromPlan,
           topic,
           renderEvidenceContext(topicEvidence)
         ),
-        temperature: 0.3,
-      });
+        {
+          temperature: 0.3,
+          maxTokens: 3200,
+        }
+      );
 
-      const topicText = getNonEmptyString(topicResponse);
       if (topicText) {
         const parsedTopic = parseTopicResearchResponse(topicText, fallbackTopicResult);
 
@@ -711,12 +696,16 @@ export const executeResearchSession = async (
   });
 
   try {
-    const skepticResponse = await runtime.useModel(ModelType.TEXT_LARGE, {
-      prompt: buildSkepticPrompt(questionFromPlan, topicResearchJson),
-      temperature: 0.3,
-    });
+    const skepticText = await generateStructuredText(
+      runtime,
+      ModelType.TEXT_LARGE,
+      buildSkepticPrompt(questionFromPlan, topicResearchJson),
+      {
+        temperature: 0.3,
+        maxTokens: 2200,
+      }
+    );
 
-    const skepticText = getNonEmptyString(skepticResponse);
     if (skepticText) {
       const parsedDebate = parseDebateReviewResponse(skepticText);
 
@@ -746,12 +735,16 @@ export const executeResearchSession = async (
   });
 
   try {
-    const synthesizerResponse = await runtime.useModel(ModelType.TEXT_LARGE, {
-      prompt: buildSynthesizerPrompt(questionFromPlan, topicResearchJson, debateJson),
-      temperature: 0.3,
-    });
+    const synthesizerText = await generateStructuredText(
+      runtime,
+      ModelType.TEXT_LARGE,
+      buildSynthesizerPrompt(questionFromPlan, topicResearchJson, debateJson),
+      {
+        temperature: 0.3,
+        maxTokens: 3200,
+      }
+    );
 
-    const synthesizerText = getNonEmptyString(synthesizerResponse);
     if (synthesizerText) {
       const parsedSynthesis = parseSynthesisResponse(synthesizerText);
 
