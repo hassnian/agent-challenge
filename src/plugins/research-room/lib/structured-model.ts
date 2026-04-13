@@ -102,6 +102,11 @@ const isValidJsonText = (text: string): boolean => {
   }
 };
 
+const isRetryableStructuredRequestError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /timed out|abort|fetch failed|network/i.test(message);
+};
+
 type StructuredTextOptions = {
   temperature?: number;
   maxTokens?: number;
@@ -177,32 +182,58 @@ export const generateStructuredText = async (
     },
   };
 
-  const response = await fetch(`${baseURL.replace(/\/+$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-    signal: AbortSignal.timeout(options.timeoutMs ?? 60000),
-  });
+  const requestDirectFallback = async () => {
+    let lastError: unknown = null;
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "Unknown error");
-    throw new Error(
-      `Structured model request failed: ${response.status} ${response.statusText} - ${errorText}`
-    );
-  }
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        const response = await fetch(`${baseURL.replace(/\/+$/, "")}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(options.timeoutMs ?? 60000),
+        });
 
-  const payload = (await response.json()) as {
-    choices?: Array<{
-      message?: {
-        content?: unknown;
-        reasoning?: string | null;
-      };
-    }>;
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "Unknown error");
+          throw new Error(
+            `Structured model request failed: ${response.status} ${response.statusText} - ${errorText}`
+          );
+        }
+
+        return (await response.json()) as {
+          choices?: Array<{
+            message?: {
+              content?: unknown;
+              reasoning?: string | null;
+            };
+          }>;
+        };
+      } catch (error) {
+        lastError = error;
+
+        if (attempt >= 2 || !isRetryableStructuredRequestError(error)) {
+          throw error;
+        }
+
+        logger.warn(
+          {
+            modelName,
+            attempt,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Structured model fallback request failed; retrying"
+        );
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
   };
 
+  const payload = await requestDirectFallback();
   const message = payload.choices?.[0]?.message;
   const content = getMessageContent(message?.content);
 
