@@ -35,7 +35,13 @@ That means you can host the client on platforms like **Cloudflare Pages**, **Ver
 
 ## Configuration
 
-Set the backend URL with:
+Copy the example env file and set the backend URL:
+
+```bash
+cp .env.example .env
+```
+
+Default example:
 
 ```bash
 ELIZA_SERVER_URL=http://127.0.0.1:3000
@@ -59,7 +65,8 @@ If your Eliza backend runs locally on port `3000`, start the Nuxt client on a di
 ```bash
 # from the repo root
 cd client
-ELIZA_SERVER_URL=http://127.0.0.1:3000 bun run dev -- --port 3001
+cp .env.example .env
+bun run dev -- --port 3001
 ```
 
 Then open:
