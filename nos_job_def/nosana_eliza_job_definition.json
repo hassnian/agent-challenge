@@ -2,33 +2,49 @@
   "version": "0.1",
   "type": "container",
   "meta": {
-    "trigger": "api",
-    "system_resources": {
-      "required_vram": 16
-    }
+    "trigger": "cli"
   },
   "ops": [
     {
-      "id": "agent",
+      "id": "eliza-api",
       "type": "container/run",
       "args": {
         "image": "hassnian/nosana-eliza-agent:latest",
-        "cmd": ["/bin/sh", "-c", "/app/scripts/start-nosana-container.sh"],
-        "gpu": true,
-        "expose": 3000,
+        "cmd": [
+          "/bin/sh",
+          "-c",
+          "elizaos start"
+        ],
+        "expose": [
+          {
+            "port": 3000,
+            "health_checks": [
+              {
+                "type": "http",
+                "path": "/api/server/ping",
+                "method": "GET",
+                "expected_status": 200,
+                "continuous": true
+              }
+            ]
+          }
+        ],
         "env": {
-          "ENABLE_OLLAMA": "true",
-          "OLLAMA_MODEL": "qwen2.5:7b-instruct",
-          "OPENAI_API_KEY": "ollama",
-          "OPENAI_BASE_URL": "http://127.0.0.1:11434/v1",
-          "OPENAI_SMALL_MODEL": "qwen2.5:7b-instruct",
-          "OPENAI_LARGE_MODEL": "qwen2.5:7b-instruct",
+          "OPENAI_API_KEY": "nosana",
+          "OPENAI_BASE_URL": "https://5i8frj7ann99bbw9gzpprvzj2esugg39hxbb4unypskq.node.k8s.prd.nos.ci/v1",
+          "OPENAI_SMALL_MODEL": "Qwen3.5-9B-FP8",
+          "OPENAI_LARGE_MODEL": "Qwen3.5-9B-FP8",
+          "OPENAI_EMBEDDING_URL": "https://4yiccatpyxx773jtewo5ccwhw1s2hezq5pehndb6fcfq.node.k8s.prd.nos.ci/v1",
+          "OPENAI_EMBEDDING_API_KEY": "nosana",
+          "OPENAI_EMBEDDING_MODEL": "Qwen3-Embedding-0.6B",
+          "OPENAI_EMBEDDING_DIMENSIONS": "1024",
+          "SERPER_API_KEY": "REPLACE_WITH_YOUR_SERPER_KEY",
           "SERVER_PORT": "3000",
           "NODE_ENV": "production"
         }
       },
       "execution": {
-        "group": "run"
+        "group": "app"
       }
     }
   ]

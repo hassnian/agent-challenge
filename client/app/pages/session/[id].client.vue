@@ -18,63 +18,6 @@
         </div>
 
         <div :class="contentWrapperClass">
-          <section
-            v-if="showSessionOverview"
-            class="mb-10 mt-6 space-y-6"
-          >
-            <div class="rounded-2xl border border-[var(--ui-border)]/50 bg-[var(--ui-bg-elevated)]/70 p-5 backdrop-blur-sm">
-              <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                <div class="space-y-4">
-                  <p class="text-xs font-medium text-[var(--ui-text-dimmed)]">Research Progress</p>
-                  <PhaseStepper :phase="resolvedSession.phase" />
-                </div>
-
-                <div v-if="resolvedSession.plan && resolvedSession.phase !== 'plan-review'" class="min-w-0 lg:max-w-lg">
-                  <p class="mb-3 text-xs font-medium text-[var(--ui-text-dimmed)]">Topic Outline</p>
-                  <div class="space-y-1">
-                    <div
-                      v-for="topic in resolvedSession.plan.topics"
-                      :key="topic.id"
-                      class="flex items-start gap-3 py-1.5"
-                    >
-                      <span class="mt-0.5 shrink-0 text-xs">
-                        <span v-if="topic.status === 'done'" class="text-[var(--ui-text-muted)]">&#10003;</span>
-                        <span v-else-if="topic.status === 'active'" class="text-[var(--ui-text)]">&rarr;</span>
-                        <span v-else class="text-[var(--ui-text-dimmed)]">&#9675;</span>
-                      </span>
-                      <div class="min-w-0 flex-1">
-                        <p class="text-sm" :class="topic.status === 'active' ? 'text-[var(--ui-text-highlighted)]' : 'text-[var(--ui-text)]'">{{ topic.title }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="rounded-2xl border border-[var(--ui-border)]/50 bg-[var(--ui-bg-elevated)]/40 p-5">
-              <div class="flex items-center justify-between gap-3">
-                <p class="text-xs font-medium text-[var(--ui-text-dimmed)]">Activity Stream</p>
-                <p class="text-xs text-[var(--ui-text-dimmed)]">{{ sessionOverviewEntries.length }} latest updates</p>
-              </div>
-
-              <div class="mt-4 space-y-5">
-                <div v-for="entry in sessionOverviewEntries" :key="entry.id" class="flex flex-col gap-1.5">
-                  <div class="flex items-center justify-between gap-1.5">
-                    <RoleBadge :role="entry.role" size="xs" />
-                    <ClientOnly v-if="entry.timestamp">
-                      <span class="text-xs text-[var(--ui-text-dimmed)]">{{ formatLogTime(entry.timestamp) }}</span>
-                    </ClientOnly>
-                  </div>
-                  <p class="text-[13px] leading-relaxed text-[var(--ui-text)]">{{ entry.message }}</p>
-                </div>
-
-                <div v-if="!sessionOverviewEntries.length" class="py-6 text-center">
-                  <p class="text-sm text-[var(--ui-text-dimmed)]">Waiting for system logs...</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
           <!-- Phase: Planning -->
           <template v-if="!resolvedSession.plan && resolvedSession.phase === 'planning'">
             <div class="mb-10">
@@ -135,45 +78,45 @@
 
           <!-- Phase: Focus (Researching, Critiquing, Synthesizing) -->
           <template v-else-if="isFocusPhase">
-            <div class="space-y-12">
-              <section class="space-y-4 mt-6">
-                <p class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)]">{{ phaseLabel }}</p>
+            <div class="space-y-10">
+              <!-- Hero: phase + question + active topic merged -->
+              <section class="mt-6 space-y-5">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-xs tracking-wide uppercase shimmer-text">{{ phaseLabel }}</span>
+                  <span class="text-[11px] text-[var(--ui-text-dimmed)]/40">·</span>
+                  <span class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)]">{{ activeBadgeCopy }}</span>
+                </div>
                 <h2 class="text-[28px] leading-tight font-serif text-[var(--ui-text-highlighted)] max-w-3xl">{{ resolvedSession.question }}</h2>
-                <p class="text-[15px] text-[var(--ui-text-muted)] leading-relaxed max-w-3xl">{{ activeHeaderCopy }}</p>
-              </section>
 
-              <section class="py-8">
-                <div class="flex flex-col gap-2">
-                  <div class="flex items-center gap-3 mb-1">
-                    <span class="text-[11px] tracking-wide uppercase text-[var(--ui-text-dimmed)]">{{ activeStateEyebrow }}</span>
-                    <span class="text-[11px] text-[var(--ui-text-dimmed)]/40">·</span>
-                    <span class="text-[11px] tracking-wide uppercase text-[var(--ui-text-dimmed)]">{{ activeBadgeCopy }}</span>
+                <div class="rounded-xl border border-[var(--ui-border)]/40 bg-[var(--ui-bg-elevated)]/50 p-5 space-y-3">
+                  <p class="text-[11px] tracking-wide uppercase text-[var(--ui-text-dimmed)]">{{ activeStateEyebrow }}</p>
+                  <h3 class="text-lg font-serif text-[var(--ui-text-highlighted)]">{{ activeStateTitle }}</h3>
+                  <p class="max-w-3xl text-sm leading-relaxed text-[var(--ui-text-muted)]">{{ activeStateSummary }}</p>
+
+                  <div v-if="activeTopic && resolvedSession.phase === 'researching'" class="flex flex-wrap gap-2 pt-1">
+                    <span
+                      v-for="query in activeTopic.queries"
+                      :key="query"
+                      class="text-xs text-[var(--ui-text-muted)] bg-[var(--ui-bg)]/60 px-3 py-1.5 rounded-full"
+                    >{{ query }}</span>
                   </div>
-                  <h3 class="text-xl font-serif text-[var(--ui-text-highlighted)]">{{ activeStateTitle }}</h3>
-                  <p class="max-w-3xl text-sm leading-relaxed text-[var(--ui-text)] mt-1">{{ activeStateSummary }}</p>
-                </div>
-
-                <div v-if="activeTopic && resolvedSession.phase === 'researching'" class="mt-6 flex flex-wrap gap-2">
-                  <span
-                    v-for="query in activeTopic.queries"
-                    :key="query"
-                    class="text-xs text-[var(--ui-text-muted)] bg-[var(--ui-bg-elevated)]/60 px-3 py-1.5 rounded-full backdrop-blur-sm"
-                  >{{ query }}</span>
                 </div>
               </section>
 
-              <section class="grid gap-8 sm:grid-cols-3 py-8 border-t border-[var(--ui-border)]/30">
+              <!-- Metrics — compact, no helpers -->
+              <section class="grid gap-6 sm:grid-cols-3 py-6 border-t border-[var(--ui-border)]/30">
                 <div
                   v-for="metric in activeMetrics"
                   :key="metric.label"
-                  class="flex flex-col"
+                  class="flex flex-col gap-1"
                 >
                   <p class="text-[11px] uppercase tracking-widest text-[var(--ui-text-dimmed)]">{{ metric.label }}</p>
-                  <p class="mt-1 text-3xl font-serif font-light text-[var(--ui-text-highlighted)]">{{ metric.value }}</p>
-                  <p class="mt-2 text-[13px] leading-relaxed text-[var(--ui-text-dimmed)] max-w-[200px]">{{ metric.helper }}</p>
+                  <div v-if="metric.value === 0 || metric.value === '0'" class="mt-1 h-9 w-16 rounded shimmer" />
+                  <p v-else class="mt-1 text-3xl font-serif font-light text-[var(--ui-text-highlighted)]">{{ metric.value }}</p>
                 </div>
               </section>
 
+              <!-- Plan accordion -->
               <details v-if="resolvedSession.plan" class="group border-t border-[var(--ui-border)]/30">
                 <summary class="cursor-pointer list-none py-5 flex items-center justify-between gap-3 focus:outline-none">
                   <p class="text-[15px] font-medium text-[var(--ui-text-highlighted)]">View Original Plan</p>
@@ -203,15 +146,13 @@
                 </div>
               </details>
 
-              <section class="pt-2">
-                <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 class="text-[15px] font-medium text-[var(--ui-text-highlighted)]">{{ activityTimelineTitle }}</h3>
-                    <p class="mt-1 text-[13px] text-[var(--ui-text-dimmed)]">{{ activityTimelineCopy }}</p>
-                  </div>
+              <!-- Activity timeline — tightened -->
+              <section class="pt-2 border-t border-[var(--ui-border)]/30">
+                <div class="mb-5 flex items-center justify-between gap-3">
+                  <h3 class="text-[15px] font-medium text-[var(--ui-text-highlighted)]">{{ activityTimelineTitle }}</h3>
                   <UButton
                     v-if="canToggleActivityScope"
-                    :label="showFullActivity ? 'Show focus view' : 'Show full timeline'"
+                    :label="showFullActivity ? 'Focus view' : 'Full timeline'"
                     variant="link"
                     color="neutral"
                     size="xs"
@@ -220,14 +161,14 @@
                   />
                 </div>
 
-                <div class="space-y-5">
+                <div class="space-y-4">
                   <div
                     v-for="entry in displayedActivityEntries"
                     :key="entry.id"
                     class="flex gap-4"
                   >
                     <RoleBadge :role="entry.role" size="xs" class="shrink-0 mt-0.5" />
-                    <div class="flex-1 space-y-1">
+                    <div class="flex-1">
                       <div class="flex items-start justify-between gap-4">
                         <span class="text-[14px] text-[var(--ui-text)] leading-relaxed">{{ entry.message }}</span>
                         <span class="text-[11px] text-[var(--ui-text-dimmed)] shrink-0 mt-0.5">{{ formatLogTime(entry.timestamp) }}</span>
@@ -235,8 +176,10 @@
                     </div>
                   </div>
 
-                  <div v-if="displayedActivityEntries.length === 0" class="py-8 text-[var(--ui-text-dimmed)] text-[14px]">
-                    Waiting for agent milestones...
+                  <div v-if="displayedActivityEntries.length === 0" class="space-y-3 py-4">
+                    <div class="h-3 rounded-sm w-3/4 shimmer" />
+                    <div class="h-3 rounded-sm w-1/2 shimmer" />
+                    <div class="h-3 rounded-sm w-2/3 shimmer" />
                   </div>
                 </div>
               </section>
@@ -463,11 +406,6 @@ watch(() => resolvedSession.value?.phase, () => {
   showFullActivity.value = false
 })
 
-const showSessionOverview = computed(() => {
-  const phase = resolvedSession.value?.phase
-  return phase === 'planning' || phase === 'plan-review'
-})
-
 const showRightRail = computed(() => resolvedSession.value?.phase === 'complete')
 
 watch(showRightRail, (visible) => {
@@ -488,10 +426,6 @@ const contentWrapperClass = computed(() => {
 
   if (isFocusPhase.value) {
     return 'max-w-5xl mx-auto w-full px-6 sm:px-8 py-8'
-  }
-
-  if (showSessionOverview.value) {
-    return 'max-w-4xl mx-auto w-full px-6 sm:px-8 py-8'
   }
 
   return 'max-w-2xl mx-auto w-full px-8 py-8'
@@ -597,7 +531,6 @@ const currentPhaseRole = computed<ProgressRole | null>(() => {
 })
 
 const allActivityEntries = computed(() => [...(resolvedSession.value?.progressLog ?? [])].reverse())
-const sessionOverviewEntries = computed(() => allActivityEntries.value.slice(0, 8))
 
 const currentPhaseEntries = computed(() => {
   const role = currentPhaseRole.value
@@ -611,18 +544,6 @@ const currentPhaseEntries = computed(() => {
 })
 
 const latestPhaseEntry = computed(() => currentPhaseEntries.value[0] ?? allActivityEntries.value[0] ?? null)
-
-const activeHeaderCopy = computed(() => {
-  if (resolvedSession.value?.phase === 'researching') {
-    return `${completedTopicCount.value} of ${totalTopics.value} topics completed with ${displayEvidenceCount.value} sources captured so far.`
-  }
-
-  if (resolvedSession.value?.phase === 'critiquing') {
-    return `${displayEvidenceCount.value} sources are being pressure-tested before the final synthesis is assembled.`
-  }
-
-  return `The final recommendation is being assembled from ${displayEvidenceCount.value} sources and ${resolvedSession.value?.critiques.length ?? 0} critique notes.`
-})
 
 const activeStateEyebrow = computed(() => {
   const labels: Record<string, string> = {
@@ -737,19 +658,6 @@ const activityTimelineTitle = computed(() => {
     synthesizing: 'Synthesis Timeline',
   }
   return titles[resolvedSession.value?.phase || ''] || 'Activity Timeline'
-})
-
-const activityTimelineCopy = computed(() => {
-  if (showFullActivity.value) {
-    return 'Showing the full research activity feed across every phase.'
-  }
-
-  const copies: Record<string, string> = {
-    researching: 'Showing curated searcher updates for the current research pass.',
-    critiquing: 'Showing curated skeptic updates for the current critique pass.',
-    synthesizing: 'Showing curated synthesizer updates for the final write-up.',
-  }
-  return copies[resolvedSession.value?.phase || ''] || 'Showing the latest agent milestones.'
 })
 
 const displayedActivityEntries = computed(() => {

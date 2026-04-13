@@ -125,3 +125,22 @@ body {
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
 }
+
+.shimmer-text {
+    background: linear-gradient(90deg, var(--ui-text-dimmed) 25%, var(--ui-text-muted) 50%, var(--ui-text-dimmed) 75%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer-reverse 2s ease-in-out infinite;
+}
+
+@keyframes shimmer-reverse {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
