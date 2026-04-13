@@ -483,7 +483,7 @@ const buildBootstrapFailedUiSession = (
   }
 }
 
-const getLatestMemoryMetadata = async <T>(
+const getLatestMemoryMetadata = async <T extends { updatedAt?: number }>(
   event: H3Event,
   agentId: string,
   channelId: string,
@@ -499,7 +499,10 @@ const getLatestMemoryMetadata = async <T>(
       channelId,
       {
         tableName,
-        limit: 1,
+        // Read a small window and choose the newest snapshot ourselves,
+        // because memory APIs may return append-only state entries where
+        // limit: 1 is not guaranteed to be the latest by updatedAt.
+        limit: 20,
       }
     )
   } catch (error) {
@@ -526,13 +529,37 @@ const getLatestMemoryMetadata = async <T>(
     throw error
   }
 
-  const memory = response.data?.memories?.at(0)
-  const metadata = memory?.content?.metadata
-  if (!metadata || typeof metadata !== 'object' || !(key in metadata)) {
-    return null
-  }
+  const memories = response.data?.memories ?? []
 
-  return metadata[key] ?? null
+  const latest = memories
+    .map((memory) => {
+      const metadata = memory.content?.metadata
+      if (!metadata || typeof metadata !== 'object' || !(key in metadata)) {
+        return null
+      }
+
+      const value = metadata[key]
+      if (!value || typeof value !== 'object') {
+        return null
+      }
+
+      const updatedAt = (
+        'updatedAt' in value &&
+        typeof value.updatedAt === 'number'
+      )
+        ? value.updatedAt
+        : (typeof memory.createdAt === 'number' ? memory.createdAt : 0)
+
+      return {
+        value: value as T,
+        updatedAt,
+      }
+    })
+    .filter((entry): entry is { value: T; updatedAt: number } => entry !== null)
+    .sort((left, right) => right.updatedAt - left.updatedAt)
+    .at(0)
+
+  return latest?.value ?? null
 }
 
 const getLatestResearchState = async (
