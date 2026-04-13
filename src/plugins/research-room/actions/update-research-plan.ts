@@ -65,12 +65,15 @@ export const updateResearchPlanAction: Action = {
         buildPlanUpdatePrompt(latestPlan, instruction),
         {
           temperature: 0.3,
-          maxTokens: 2400,
+          maxTokens: 1800,
+          timeoutMs: 120000,
         }
       );
 
       if (plannerText) {
-        const parsedPlan = parsePlanResponse(latestPlan.question, plannerText);
+        const parsedPlan = parsePlanResponse(latestPlan.question, plannerText, {
+          questionPolicy: "allow-model",
+        });
 
         if (parsedPlan) {
           updatedPlan = parsedPlan;

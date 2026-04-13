@@ -7,7 +7,7 @@ export const extractResearchQuestion = (text: string): string => {
 
   const cleaned = trimmed
     .replace(
-      /^(please\s+)?(?:(?:can|could|would)\s+you\s+)?(?:help\s+me\s+)?(?:research|investigate|look\s+into|find\s+out\s+about)\s+/i,
+      /^(please\s+)?(?:(?:can|could|would)\s+you\s+)?(?:help\s+me\s+)?(?:research|investigate|look\s+into|find\s+out\s+about)\s*[:,-]?\s*/i,
       ""
     )
     .replace(/[?]+$/, "")

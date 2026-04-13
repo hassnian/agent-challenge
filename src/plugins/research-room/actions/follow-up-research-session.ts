@@ -91,12 +91,15 @@ export const followUpResearchSessionAction: Action = {
         buildFollowUpPlanPrompt(sourceSession.data, instruction),
         {
           temperature: 0.3,
-          maxTokens: 2400,
+          maxTokens: 1800,
+          timeoutMs: 120000,
         }
       );
 
       if (plannerText) {
-        const parsedPlan = parsePlanResponse(fallbackQuestion, plannerText);
+        const parsedPlan = parsePlanResponse(fallbackQuestion, plannerText, {
+          questionPolicy: "allow-model",
+        });
         if (parsedPlan) {
           plan = parsedPlan;
         } else {

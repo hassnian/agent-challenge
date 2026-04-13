@@ -31,47 +31,62 @@ const createDefaultClarifyingGaps = (question: string): string[] => {
   ];
 };
 
+const createGenericFallbackTopics = (question: string): ResearchTopic[] => {
+  return [
+    {
+      id: "topic-1",
+      title: "Current landscape and primary sources",
+      reason: "Establish the most current baseline using primary or official sources before drawing conclusions.",
+      searchQueries: [
+        `${question} official sources`,
+        `${question} current landscape`,
+        `${question} latest developments`,
+      ],
+      priority: "high",
+    },
+    {
+      id: "topic-2",
+      title: "Practical approaches and decision criteria",
+      reason: "Identify the main approaches, levers, or evaluation criteria that most affect the answer.",
+      searchQueries: [
+        `${question} best practices`,
+        `${question} requirements`,
+        `${question} case studies`,
+      ],
+      priority: "high",
+    },
+    {
+      id: "topic-3",
+      title: "Constraints, tradeoffs, and risks",
+      reason: "Surface limitations, tradeoffs, and failure modes that could change the recommendation.",
+      searchQueries: [
+        `${question} constraints`,
+        `${question} tradeoffs`,
+        `${question} risks`,
+      ],
+      priority: "medium",
+    },
+    {
+      id: "topic-4",
+      title: "Evidence gaps and open questions",
+      reason: "Find what still needs verification so the later synthesis can clearly separate evidence from uncertainty.",
+      searchQueries: [
+        `${question} open questions`,
+        `${question} evidence gaps`,
+        `${question} unresolved issues`,
+      ],
+      priority: "medium",
+    },
+  ];
+};
+
 export const createDefaultResearchPlan = (
   question: string
 ): ResearchPlanData => {
   return {
     question,
-    goal: "Create a research plan the user can review before any deep research starts.",
-    topics: [
-      {
-        id: "topic-1",
-        title: "Clarify the core question",
-        reason: "Make sure the question is specific enough for useful research.",
-        searchQueries: [
-          question,
-          `${question} beginner perspective`,
-          `${question} overview`,
-        ],
-        priority: "high",
-      },
-      {
-        id: "topic-2",
-        title: "Identify the most important subtopics",
-        reason: "Break the problem into smaller areas that can be researched separately.",
-        searchQueries: [
-          `${question} subtopics`,
-          `${question} framework`,
-          `${question} dimensions`,
-        ],
-        priority: "high",
-      },
-      {
-        id: "topic-3",
-        title: "Find the biggest uncertainties",
-        reason: "Expose where more evidence or clarification is needed before researching deeply.",
-        searchQueries: [
-          `${question} open questions`,
-          `${question} risks`,
-          `${question} unknowns`,
-        ],
-        priority: "medium",
-      },
-    ],
+    goal: `Build a research plan to answer "${question}" with concrete evidence and decision-useful findings.`,
+    topics: createGenericFallbackTopics(question),
     outOfScope: [],
     assumptions: [],
     clarifyingGaps: createDefaultClarifyingGaps(question),

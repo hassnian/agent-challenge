@@ -72,12 +72,15 @@ export const createResearchPlanAction: Action = {
         buildPlannerPrompt(question),
         {
           temperature: 0.3,
-          maxTokens: 2200,
+          maxTokens: 1600,
+          timeoutMs: 120000,
         }
       );
 
       if (plannerText) {
-        const parsedPlan = parsePlanResponse(question, plannerText);
+        const parsedPlan = parsePlanResponse(question, plannerText, {
+          questionPolicy: "preserve-input",
+        });
 
         if (parsedPlan) {
           plan = parsedPlan;

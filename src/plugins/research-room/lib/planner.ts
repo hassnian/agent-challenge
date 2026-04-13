@@ -45,7 +45,7 @@ Question: ${question}
 
 Return valid JSON only with this exact shape:
 {
-  "question": "restated research question",
+  "question": "copy the user's question verbatim unless the user explicitly changed the scope",
   "goal": "one sentence goal",
   "topics": [
     {
@@ -63,6 +63,7 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
+- Keep the question faithful to the user's wording; do not add constraints like remote, seniority, geography, or timeframe unless the user explicitly asked for them
 - Use the current date/year above as the default temporal context unless the user explicitly asks about another period
 - If the user does not specify a timeframe, prefer current-year or evergreen queries over stale year-specific queries
 - For fast-moving topics like jobs, markets, regulations, events, or software releases, include the current year or terms like "current" or "latest" when useful
@@ -70,17 +71,20 @@ Rules:
 - Generate 3 to 5 main topics
 - Topics must be concrete, researchable, and non-overlapping
 - Topics should be framed as decision-useful workstreams, not generic blog categories
+- Do not use meta topics such as "clarify the question", "identify subtopics", or "find uncertainties"
 - The full set of topics should cover the highest-value parts of answering the question
 - If the user's role, audience, or target path is still unclear, include a topic that resolves that ambiguity instead of assuming one path too early
 - Each topic must include 2 to 4 distinct high-signal search queries
 - Put the strongest queries first because only the first few may be used
 - Queries should be specific to the question and likely sources, not generic SEO phrases
 - Prefer queries that target official docs, company career pages, ecosystem sites, GitHub, hackathons, community channels, or role-specific job boards when relevant
-- Add time, geography, remote/on-site, or role constraints when they materially change the answer
+- Avoid weak generic source queries like broad site: searches unless a site-specific source is truly the best way to answer that topic
+- Add time, geography, remote/on-site, or role constraints only when they materially change the answer and are explicit in the user's request
 - Avoid vague queries like "best resources", "overview", or "for beginners" unless the user's question explicitly asks for beginner learning material
 - Priority must be one of: high, medium, low
 - Clarifying gaps should be specific to this question, not generic filler
 - Each clarifying gap must be phrased as a direct question the user can answer
+- Keep the goal, topic titles, topic reasons, and clarifying gaps concise
 - This is only a plan, not the actual research result
 `.trim();
 };
@@ -124,6 +128,8 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
+- If the user asked to change scope, reflect that in the updated question; otherwise keep the question close to the current plan
+- Do not add constraints like remote, seniority, geography, or timeframe unless the user explicitly requested them
 - Use the current date/year above as the default temporal context unless the user explicitly asks about another period
 - If the user does not specify a timeframe, prefer current-year or evergreen queries over stale year-specific queries
 - For fast-moving topics like jobs, markets, regulations, events, or software releases, include the current year or terms like "current" or "latest" when useful
@@ -133,16 +139,19 @@ Rules:
 - Generate 3 to 5 main topics
 - Topics must be concrete, researchable, and non-overlapping
 - Topics should be framed as decision-useful workstreams, not generic blog categories
+- Do not use meta topics such as "clarify the question", "identify subtopics", or "find uncertainties"
 - If the updated scope leaves role, audience, or path unclear, include a topic that resolves that ambiguity instead of assuming one path too early
 - Each topic must include 2 to 4 distinct high-signal search queries
 - Put the strongest queries first because only the first few may be used
 - Queries should be specific to the question and likely sources, not generic SEO phrases
 - Prefer queries that target official docs, company career pages, ecosystem sites, GitHub, hackathons, community channels, or role-specific job boards when relevant
-- Add time, geography, remote/on-site, or role constraints when they materially change the answer
+- Avoid weak generic source queries like broad site: searches unless a site-specific source is truly the best way to answer that topic
+- Add time, geography, remote/on-site, or role constraints only when they materially change the answer and are explicit in the user's request
 - Avoid vague queries like "best resources", "overview", or "for beginners" unless the user's question explicitly asks for beginner learning material
 - Priority must be one of: high, medium, low
 - Clarifying gaps should reflect the updated scope and open decisions
 - Each clarifying gap must be phrased as a direct question the user can answer
+- Keep the goal, topic titles, topic reasons, and clarifying gaps concise
 - Return an unapproved plan, since edits require review again
   `.trim();
 };
@@ -190,6 +199,8 @@ Return valid JSON only with this exact shape:
 
 Rules:
 - Do not wrap the JSON in markdown fences
+- Keep the follow-up question tightly aligned to the user's new instruction and the unresolved issues from the prior session
+- Do not add constraints like remote, seniority, geography, or timeframe unless the user explicitly requested them
 - Use the current date/year above as the default temporal context unless the user explicitly asks about another period
 - If the user does not specify a timeframe, prefer current-year or evergreen queries over stale year-specific queries
 - For fast-moving topics like jobs, markets, regulations, events, or software releases, include the current year or terms like "current" or "latest" when useful
@@ -200,12 +211,15 @@ Rules:
 - Generate 3 to 5 main topics
 - Topics must be concrete, researchable, and non-overlapping
 - Topics should be framed as decision-useful workstreams, not generic blog categories
+- Do not use meta topics such as "clarify the question", "identify subtopics", or "find uncertainties"
 - Each topic must include 2 to 4 distinct high-signal search queries
 - Put the strongest queries first because only the first few may be used
 - Queries should be specific to the follow-up request and likely sources, not generic SEO phrases
 - Prefer queries that target official docs, company pages, ecosystem sites, GitHub, primary sources, regulators, or role-specific sources when relevant
+- Avoid weak generic source queries like broad site: searches unless a site-specific source is truly the best way to answer that topic
 - Priority must be one of: high, medium, low
 - Clarifying gaps should only ask questions that are still genuinely unresolved after the previous session
+- Keep the goal, topic titles, topic reasons, and clarifying gaps concise
 - Return an unapproved plan shape only; the caller decides whether to auto-approve the follow-up run
 `.trim();
 };
@@ -288,9 +302,14 @@ const parseClarifyingGaps = (value: unknown, fallback: string[]): string[] => {
   return gaps.length > 0 ? gaps : fallback;
 };
 
+type ParsePlanResponseOptions = {
+  questionPolicy?: "preserve-input" | "allow-model";
+};
+
 export const parsePlanResponse = (
   fallbackQuestion: string,
-  raw: string
+  raw: string,
+  options: ParsePlanResponseOptions = {}
 ): ResearchPlanData | null => {
   const withoutFences = stripJsonCodeFences(raw);
 
@@ -306,7 +325,9 @@ export const parsePlanResponse = (
     }
 
     const question =
-      typeof parsed.question === "string" && parsed.question.trim().length > 0
+      options.questionPolicy === "allow-model" &&
+      typeof parsed.question === "string" &&
+      parsed.question.trim().length > 0
         ? parsed.question.trim()
         : fallbackQuestion;
 
