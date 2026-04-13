@@ -15,6 +15,8 @@ import { stripJsonCodeFences } from "./json";
  * - if the result is missing or not valid JSON and the configured model
  *   supports a thinking toggle, retry once through the direct endpoint with
  *   thinking disabled.
+ * - the direct fallback request retries briefly on transient failures such as
+ *   timeouts, network errors, rate limits, and 5xx responses.
  */
 
 const getStringSetting = (runtime: IAgentRuntime, key: string): string | null => {
@@ -104,7 +106,7 @@ const isValidJsonText = (text: string): boolean => {
 
 const isRetryableStructuredRequestError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
-  return /timed out|abort|fetch failed|network/i.test(message);
+  return /timed out|abort|fetch failed|network|\b429\b|\b5\d\d\b/i.test(message);
 };
 
 type StructuredTextOptions = {
