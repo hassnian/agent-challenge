@@ -908,6 +908,38 @@ export const approveChannelPlan = async (
   invalidateSessionCache(userId, channelId)
 }
 
+export const updateChannelPlan = async (
+  event: H3Event,
+  channelId: string,
+  userId: string,
+  instructions: string
+) => {
+  const channel = await getChannelDetails(event, channelId)
+  if (!channel) {
+    throw createError({ statusCode: 404, statusMessage: 'Research session not found.' })
+  }
+
+  const trimmedInstructions = instructions.trim()
+
+  if (!trimmedInstructions) {
+    throw createError({ statusCode: 400, statusMessage: 'Missing plan update instructions.' })
+  }
+
+  const messageServerId = channel.messageServerId ?? await getCurrentMessageServerId(event)
+
+  await sendChannelMessage(event, {
+    channelId,
+    authorId: userId,
+    messageServerId,
+    content: `Update the research plan with these directions: ${trimmedInstructions}`,
+    metadata: {
+      source: RESEARCH_CHANNEL_SOURCE,
+    },
+  })
+
+  invalidateSessionCache(userId, channelId)
+}
+
 export const retryResearchBootstrap = async (
   event: H3Event,
   userId: string,

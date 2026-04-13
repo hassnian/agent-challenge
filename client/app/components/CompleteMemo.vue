@@ -70,7 +70,7 @@
     <!-- Actions -->
     <div class="flex items-center gap-2 pt-8">
       <UButton label="Export Memo" icon="i-lucide-download" variant="outline" color="neutral" size="sm" />
-      <UButton label="Follow Up" icon="i-lucide-message-circle" variant="ghost" color="neutral" size="sm" />
+      <UButton label="Follow Up" icon="i-lucide-message-circle" variant="ghost" color="neutral" size="sm" :disabled="true" />
       <UButton label="New Research" icon="i-lucide-plus" variant="ghost" color="neutral" size="sm" to="/" />
     </div>
   </div>

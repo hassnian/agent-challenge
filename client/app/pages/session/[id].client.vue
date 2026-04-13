@@ -37,7 +37,7 @@
           <!-- Phase: Plan Review -->
           <template v-else-if="resolvedSession.phase === 'plan-review'">
             <div class="mb-10">
-              <p class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)] mb-3">Proposed Research Layout</p>
+              <p class="text-xs tracking-wide uppercase text-[var(--ui-text-dimmed)] mb-3">Proposed Research</p>
               <h1 class="text-[28px] leading-tight font-serif text-[var(--ui-text-highlighted)] max-w-3xl">{{ resolvedSession.question }}</h1>
             </div>
 
@@ -72,7 +72,32 @@
                 :disabled="isApprovingPlan"
                 @click="handleApprove"
               />
-              <UButton label="Edit Directions" variant="outline" color="neutral" size="md" :disabled="isApprovingPlan" />
+              <UButton
+                :label="isEditingPlan ? 'Cancel Edit' : 'Edit Directions'"
+                variant="outline"
+                color="neutral"
+                size="md"
+                :disabled="isApprovingPlan || isSubmittingPlanEdit"
+                @click="togglePlanEdit"
+              />
+            </div>
+
+            <div v-if="isEditingPlan" class="mt-5 rounded-xl border border-[var(--ui-border)]/50 bg-[var(--ui-bg-elevated)]/50 p-4 space-y-3">
+              <UTextarea
+                v-model="planEditInstructions"
+                autoresize
+                :rows="4"
+                :maxrows="8"
+                placeholder="Example: narrow this to B2B AI tools, remove hiring-market research, and add pricing benchmarks."
+                class="w-full"
+              />
+              <UButton
+                :label="isSubmittingPlanEdit ? 'Updating Plan...' : 'Update Plan'"
+                color="primary"
+                :loading="isSubmittingPlanEdit"
+                :disabled="!planEditInstructions.trim() || isSubmittingPlanEdit || isApprovingPlan"
+                @click="handlePlanEdit"
+              />
             </div>
           </template>
 
@@ -256,7 +281,17 @@ type MetricCard = {
 }
 
 const route = useRoute()
-const { sessions, activeSessionId, approvePlan, loadSession, refreshSessions, startSessionPolling, isPlaceholderSession, isOptimisticSession } = useResearch()
+const {
+  sessions,
+  activeSessionId,
+  approvePlan,
+  updatePlan,
+  loadSession,
+  refreshSessions,
+  startSessionPolling,
+  isPlaceholderSession,
+  isOptimisticSession,
+} = useResearch()
 
 const sessionId = computed(() => route.params.id as string)
 const session = computed(() => sessions.value.find(s => s.id === sessionId.value) || null)
@@ -264,6 +299,9 @@ const loadingSession = ref(false)
 const sessionLookupComplete = ref(false)
 const lastKnownQuestion = ref('')
 const isApprovingPlan = ref(false)
+const isEditingPlan = ref(false)
+const isSubmittingPlanEdit = ref(false)
+const planEditInstructions = ref('')
 const showFullActivity = ref(false)
 const isRightSidebarOpen = ref(true)
 
@@ -404,6 +442,10 @@ const resolvedSession = computed<ResearchSession | null>(() => {
 
 watch(() => resolvedSession.value?.phase, () => {
   showFullActivity.value = false
+
+  if (resolvedSession.value?.phase !== 'plan-review') {
+    resetPlanEdit()
+  }
 })
 
 const showRightRail = computed(() => resolvedSession.value?.phase === 'complete')
@@ -680,6 +722,38 @@ const handleApprove = async () => {
     await approvePlan(sessionId.value)
   } finally {
     isApprovingPlan.value = false
+  }
+}
+
+const resetPlanEdit = () => {
+  isEditingPlan.value = false
+  isSubmittingPlanEdit.value = false
+  planEditInstructions.value = ''
+}
+
+const togglePlanEdit = () => {
+  if (isEditingPlan.value) {
+    resetPlanEdit()
+    return
+  }
+
+  isEditingPlan.value = true
+}
+
+const handlePlanEdit = async () => {
+  const instructions = planEditInstructions.value.trim()
+
+  if (!sessionId.value || !instructions || isSubmittingPlanEdit.value) {
+    return
+  }
+
+  isSubmittingPlanEdit.value = true
+
+  try {
+    await updatePlan(sessionId.value, instructions)
+    resetPlanEdit()
+  } finally {
+    isSubmittingPlanEdit.value = false
   }
 }
 

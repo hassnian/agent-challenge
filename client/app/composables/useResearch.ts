@@ -232,6 +232,8 @@ export const useResearch = () => {
     optimisticSessionIds.value = [...optimisticSessionIds.value, channelId]
   }
 
+  const isSessionOptimistic = (channelId: string) => optimisticSessionIds.value.includes(channelId)
+
   const settleSession = (session: ResearchSession) => {
     if (isPlaceholderSession(session)) {
       return
@@ -357,6 +359,21 @@ export const useResearch = () => {
     return session
   }
 
+  const updatePlan = async (channelId: string, instructions: string) => {
+    const trimmedInstructions = instructions.trim()
+
+    const session = await requestFetch<ResearchSession>(`/api/research/channels/${channelId}/plan`, {
+      method: 'POST',
+      body: { instructions: trimmedInstructions },
+    })
+
+    upsertSession(sessions, session, { preferIncoming: true })
+    settleSession(session)
+    activeSessionId.value = session.id
+    startSessionPolling(session.id)
+    return session
+  }
+
   const retryBootstrap = async (channelId: string) => {
     const session = await requestFetch<ResearchSession>(`/api/research/channels/${channelId}/retry-bootstrap`, {
       method: 'POST',
@@ -387,12 +404,13 @@ export const useResearch = () => {
     loading,
     createSession,
     approvePlan,
+    updatePlan,
     retryBootstrap,
     refreshSessions,
     loadSession,
     deleteSession,
     startSessionPolling,
     isPlaceholderSession,
-    isOptimisticSession: (channelId: string) => optimisticSessionIds.value.includes(channelId),
+    isOptimisticSession: isSessionOptimistic,
   }
 }
