@@ -16,7 +16,7 @@
           </p>
 
           <form @submit.prevent="startResearch" class="w-full relative group">
-            <div class="relative rounded-xl bg-[var(--ui-bg)] dark:bg-zinc-900/80 border border-[var(--ui-border)]/60 focus-within:border-[var(--ui-primary)] focus-within:ring-1 focus-within:ring-[var(--ui-primary)]/50 transition-all overflow-hidden flex flex-col backdrop-blur-sm">
+            <div class="relative rounded-xl bg-[var(--ui-bg)] dark:bg-zinc-900/80 border border-[var(--ui-border)]/60 shadow-[0_18px_40px_rgba(0,0,0,0.16)] focus-within:border-[var(--ui-primary)] focus-within:ring-1 focus-within:ring-[var(--ui-primary)]/50 focus-within:shadow-[0_22px_52px_rgba(0,0,0,0.22)] transition-all overflow-hidden flex flex-col backdrop-blur-sm">
               <UTextarea
                 v-model="question"
                 autoresize
