@@ -1,7 +1,19 @@
+![Synapse banner](./assets/banner-1.png)
+
 # Synapse
 
 Synapse is a personal research agent built with **ElizaOS**.
 It helps turn open-ended questions into structured, evidence-backed research sessions.
+
+## Project Description
+
+Synapse came out of a simple frustration: too much useful information was getting scattered across tabs, search tools, notes, and half-finished docs. I wanted one place where I could ask a question, let an agent do the digging, and get back something I could actually use.
+
+Instead of dumping links or giving a vague summary, Synapse turns a research question into a structured workflow. It breaks the problem into topics, gathers evidence, challenges weak claims, and then produces a clean decision memo with sources, objections, contested points, and a confidence signal. The goal is not just to answer a question, but to leave behind something reusable.
+
+I built it for the kind of questions that keep coming up in real work: product decisions, market research, technical tradeoffs, and personal planning. It is especially useful when you want a concise output you can revisit later, share with someone else, or move into another tool as part of a weekly review or planning process.
+
+The backend runs on Nosana and the agent itself is powered by ElizaOS.
 
 ## Project Structure
 
