@@ -95,6 +95,31 @@ Open:
 http://localhost:3000
 ```
 
+## Run the client
+
+A separate Nuxt client is available in [`./client`](./client). For full setup and deployment details, see [`client/README.md`](./client/README.md).
+
+Quick start:
+
+```bash
+cd client
+cp .env.example .env
+bun install
+bun run dev -- --port 3001
+```
+
+If your backend is running locally, keep:
+
+```env
+ELIZA_SERVER_URL=http://127.0.0.1:3000
+```
+
+Then open:
+
+```text
+http://localhost:3001
+```
+
 ## Run with Docker
 
 Local build:
