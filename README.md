@@ -90,7 +90,7 @@ http://localhost:3000
 
 ## Run with Docker
 
-Build:
+Local build:
 
 ```bash
 docker build -t hassnian/nosana-eliza-agent:latest .
@@ -101,6 +101,19 @@ Run:
 ```bash
 docker run --rm -it -p 3000:3000 --env-file .env hassnian/nosana-eliza-agent:latest
 ```
+
+## Nosana Deployment
+
+Nosana runners require a `linux/amd64` image.
+
+```bash
+npm run docker:build:nosana
+npm run docker:push:nosana
+```
+
+- Image: `hassnian/nosana-eliza-agent:latest`
+- Job definition: `nos_job_def/nosana_eliza_job_definition.json`
+- Health check: `/api/server/ping`
 
 ## Notes
 

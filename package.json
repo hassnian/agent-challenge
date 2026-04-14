@@ -19,7 +19,9 @@
     "postinstall": "node scripts/patch-eliza-alpha.js",
     "start": "elizaos start",
     "dev": "elizaos dev",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "docker:build:nosana": "docker buildx build --platform linux/amd64 -t hassnian/nosana-eliza-agent:latest .",
+    "docker:push:nosana": "docker buildx build --platform linux/amd64 -t hassnian/nosana-eliza-agent:latest --push ."
   },
   "dependencies": {
     "@elizaos/client": "1.7.3-alpha.4",

@@ -2,18 +2,17 @@
   "version": "0.1",
   "type": "container",
   "meta": {
-    "trigger": "cli"
+    "trigger": "dashboard"
   },
   "ops": [
     {
       "id": "eliza-api",
       "type": "container/run",
       "args": {
-        "image": "hassnian/nosana-eliza-agent:latest",
+        "image": "hassnian/nosana-eliza-agent:nosana-amd64-v2",
         "cmd": [
-          "/bin/sh",
-          "-c",
-          "elizaos start"
+          "npm",
+          "start"
         ],
         "expose": [
           {
