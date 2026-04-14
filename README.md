@@ -61,16 +61,11 @@ OPENAI_API_KEY=your_key
 OPENAI_BASE_URL=https://your-endpoint/v1
 OPENAI_SMALL_MODEL=your-model-name
 OPENAI_LARGE_MODEL=your-model-name
-SERVER_PORT=3000
-```
-
-Optional embedding envs:
-
-```env
 OPENAI_EMBEDDING_URL=https://your-embedding-endpoint/v1
 OPENAI_EMBEDDING_API_KEY=your_embedding_key
 OPENAI_EMBEDDING_MODEL=your-embedding-model
 OPENAI_EMBEDDING_DIMENSIONS=1024
+SERVER_PORT=3000
 ```
 
 Search envs (at least one search provider is required):
