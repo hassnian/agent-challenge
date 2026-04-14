@@ -68,11 +68,16 @@ OPENAI_EMBEDDING_DIMENSIONS=1024
 SERVER_PORT=3000
 ```
 
-Search envs (at least one search provider is required):
+Search envs (at least one search provider is required; **Serper is preferred**):
 
 ```env
-TAVILY_API_KEY=your_tavily_key
 SERPER_API_KEY=your_serper_key
+TAVILY_API_KEY=your_tavily_key
+```
+
+Optional reader env:
+
+```env
 JINA_API_KEY=your_jina_key
 ```
 
@@ -80,8 +85,8 @@ Notes:
 - use an **OpenAI-compatible** endpoint
 - `OPENAI_BASE_URL` should usually end in `/v1`
 - set `OPENAI_SMALL_MODEL` and `OPENAI_LARGE_MODEL` to the model name exposed by your provider
-- at least one of `TAVILY_API_KEY` or `SERPER_API_KEY` is required for web research
-- `JINA_API_KEY` is optional, but helps with reading source pages via `r.jina.ai`
+- at least one of `TAVILY_API_KEY` or `SERPER_API_KEY` is required for web research, `SERPER_API_KEY` is the recommended default
+- `JINA_API_KEY` is optional, but helps with reading source pages via `r.jina.ai` and avoids relying only on the free rate limit
 
 ### 3. Run locally
 
