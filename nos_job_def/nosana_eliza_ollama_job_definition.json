@@ -4,45 +4,39 @@
   "meta": {
     "trigger": "dashboard",
     "system_requirements": {
-      "required_vram": 12
+      "required_vram": 21
+    }
+  },
+  "global": {
+    "variables": {
+      "MODEL": "gemma4:26b"
     }
   },
   "ops": [
     {
-      "id": "vllm-server",
+      "id": "ollama-server",
       "type": "container/run",
       "args": {
-        "image": "docker.io/vllm/vllm-openai:v0.5.4",
-        "cmd": [
-          "--model",
-          "/models",
-          "--served-model-name",
-          "Qwen3.5-9B",
-          "--host",
-          "0.0.0.0",
-          "--port",
-          "9000"
-        ],
         "gpu": true,
-        "resources": [
-          {
-            "type": "HF",
-            "repo": "Qwen/Qwen3.5-9B",
-            "target": "/models"
-          }
-        ],
+        "image": "docker.io/ollama/ollama:0.20.0",
         "expose": [
           {
-            "port": 9000,
+            "port": 11434,
             "health_checks": [
               {
                 "type": "http",
-                "path": "/v1/models",
+                "path": "/api/tags",
                 "method": "GET",
                 "expected_status": 200,
-                "continuous": true
+                "continuous": false
               }
             ]
+          }
+        ],
+        "resources": [
+          {
+            "type": "Ollama",
+            "model": "%%global.variables.MODEL%%"
           }
         ]
       },
@@ -60,10 +54,14 @@
           "start"
         ],
         "env": {
-          "OPENAI_API_KEY": "local",
-          "OPENAI_BASE_URL": "http://vllm-server:9000/v1",
-          "OPENAI_SMALL_MODEL": "Qwen3.5-9B",
-          "OPENAI_LARGE_MODEL": "Qwen3.5-9B",
+          "OPENAI_API_KEY": "ollama",
+          "OPENAI_BASE_URL": "http://ollama-server:11434/v1",
+          "OPENAI_SMALL_MODEL": "%%global.variables.MODEL%%",
+          "OPENAI_LARGE_MODEL": "%%global.variables.MODEL%%",
+          "OPENAI_EMBEDDING_URL": "https://4yiccatpyxx773jtewo5ccwhw1s2hezq5pehndb6fcfq.node.k8s.prd.nos.ci/v1",
+          "OPENAI_EMBEDDING_API_KEY": "nosana",
+          "OPENAI_EMBEDDING_MODEL": "Qwen3-Embedding-0.6B",
+          "OPENAI_EMBEDDING_DIMENSIONS": "1024",
           "SERPER_API_KEY": "REPLACE_WITH_YOUR_SERPER_KEY",
           "SECRET_SALT": "REPLACE_WITH_A_RANDOM_SECRET",
           "SERVER_PORT": "3000",
@@ -87,7 +85,7 @@
       "execution": {
         "group": "app",
         "depends_on": [
-          "vllm-server"
+          "ollama-server"
         ]
       }
     }

@@ -111,9 +111,30 @@ npm run docker:build:nosana
 npm run docker:push:nosana
 ```
 
-- Image: `hassnian/nosana-eliza-agent:latest`
+Two deployment options are included:
+
+### 1. Hosted model endpoint
+
+Use this when the model is already exposed by a hosted OpenAI-compatible endpoint.
+
+- Agent image: `hassnian/nosana-eliza-agent:nosana-amd64-v2`
 - Job definition: `nos_job_def/nosana_eliza_job_definition.json`
 - Health check: `/api/server/ping`
+
+### 2. Local model in the same Nosana job
+
+Use this when you want the deployment to run the model server itself.
+
+- Agent image: `hassnian/nosana-eliza-agent:nosana-amd64-v2`
+- Job definition: `nos_job_def/nosana_eliza_ollama_job_definition.json`
+- Local model server: Ollama
+- Model: `gemma4:26b`
+- Agent health check: `/api/server/ping`
+- Ollama health check: `/api/tags`
+
+Before deploying, replace placeholders such as:
+- `SERPER_API_KEY`
+- `SECRET_SALT`
 
 ## Notes
 
@@ -122,7 +143,7 @@ npm run docker:push:nosana
   - `/api/server/ping`
   - `/api/agents`
 - The Docker image used for deployment is:
-  - `hassnian/nosana-eliza-agent:latest`
+  - `hassnian/nosana-eliza-agent:nosana-amd64-v2`
 
 ## License
 
