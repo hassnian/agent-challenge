@@ -2,8 +2,8 @@
   "version": "0.1",
   "type": "container",
   "meta": {
-    "trigger": "api",
-    "system_resources": {
+    "trigger": "dashboard",
+    "system_requirements": {
       "required_vram": 12
     }
   },
@@ -17,7 +17,7 @@
           "--model",
           "/models",
           "--served-model-name",
-          "Qwen-7B",
+          "Qwen3.5-9B",
           "--host",
           "0.0.0.0",
           "--port",
@@ -27,7 +27,7 @@
         "resources": [
           {
             "type": "HF",
-            "repo": "Qwen/Qwen-7B",
+            "repo": "Qwen/Qwen3.5-9B",
             "target": "/models"
           }
         ],
@@ -47,28 +47,42 @@
         ]
       },
       "execution": {
-        "group": "inference"
+        "group": "app"
       }
     },
     {
       "id": "eliza-api",
       "type": "container/run",
       "args": {
-        "image": "hassnian/nosana-eliza-agent:latest",
+        "image": "hassnian/nosana-eliza-agent:nosana-amd64-v2",
         "cmd": [
-          "/bin/sh",
-          "-c",
-          "elizaos start"
+          "npm",
+          "start"
         ],
         "env": {
           "OPENAI_API_KEY": "local",
           "OPENAI_BASE_URL": "http://vllm-server:9000/v1",
-          "OPENAI_SMALL_MODEL": "Qwen-7B",
-          "OPENAI_LARGE_MODEL": "Qwen-7B",
+          "OPENAI_SMALL_MODEL": "Qwen3.5-9B",
+          "OPENAI_LARGE_MODEL": "Qwen3.5-9B",
+          "SERPER_API_KEY": "REPLACE_WITH_YOUR_SERPER_KEY",
+          "SECRET_SALT": "REPLACE_WITH_A_RANDOM_SECRET",
           "SERVER_PORT": "3000",
           "NODE_ENV": "production"
         },
-        "expose": 3000
+        "expose": [
+          {
+            "port": 3000,
+            "health_checks": [
+              {
+                "type": "http",
+                "path": "/api/server/ping",
+                "method": "GET",
+                "expected_status": 200,
+                "continuous": true
+              }
+            ]
+          }
+        ]
       },
       "execution": {
         "group": "app",
