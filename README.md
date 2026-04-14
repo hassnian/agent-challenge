@@ -15,6 +15,12 @@ I built it for the kind of questions that keep coming up in real work: product d
 
 The backend runs on Nosana and the agent itself is powered by ElizaOS.
 
+## Links
+
+- Live frontend: https://synapse-a2s.pages.dev/
+- Nosana deployment: https://3gtjwqxwfnbtjsiexm2amzyrfpo2mwvrkq6o5hcnabow.node.k8s.prd.nos.ci/
+- Demo video: https://www.youtube.com/watch?v=PsbsZZ3YfHo
+
 ## Project Structure
 
 ```text
